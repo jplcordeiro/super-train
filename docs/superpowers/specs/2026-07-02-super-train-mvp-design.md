@@ -77,7 +77,7 @@ Três tabelas.
 
 ## Pré-requisitos de setup (a fornecer)
 
-- **Supabase:** personal access token (para o MCP configurar/gerir o schema); project ref/URL + `anon key` (para o app).
+- **Supabase:** personal access token (para o MCP configurar/gerir o schema); project ref/URL + `publishable key` (`sb_publishable_...`, antiga `anon key`) para o app.
 - **Mapbox:** access token público (de preferência restrito por URL de origem).
 
 ## Fora do escopo (fases seguintes)
