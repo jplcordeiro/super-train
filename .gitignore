@@ -1,0 +1,8 @@
+# Segredos / variáveis de ambiente
+.env
+.env.local
+.env.*.local
+
+# Dependências e build (frontend React+Vite, quando existir)
+node_modules/
+dist/
