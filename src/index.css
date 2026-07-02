@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+/* ---- Design tokens: jw.org-derived, desaturated palette ---- */
+@theme {
+  --color-paper: #eef1f5;
+  --color-line: #dde3ea;
+  --color-line-strong: #cdd5e0;
+
+  --color-ink: #29323c;
+  --color-ink-soft: #67707d;
+  --color-ink-faint: #98a1ae;
+
+  --color-jwblue: #486492;
+  --color-jwblue-deep: #33507d;
+  --color-jwblue-wash: #e7edf6;
+
+  --color-sage: #5c8a76;
+  --color-sage-wash: #e7f0eb;
+  --color-sage-ink: #3f6b58;
+
+  --color-mist: #eceff3;
+  --color-danger: #a4483f;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo,
+    Consolas, monospace;
+
+  --shadow-card: 0 1px 2px rgb(41 50 60 / 0.04), 0 6px 20px rgb(41 50 60 / 0.05);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  :where(a, button, input, select, label):focus-visible {
+    outline: 2px solid var(--color-jwblue);
+    outline-offset: 2px;
+  }
+}
+
+/* ---- Reused primitives (everything else is inline utilities) ---- */
+@layer components {
+  .btn {
+    @apply inline-flex cursor-pointer items-center gap-2 rounded-lg border
+      border-transparent px-[15px] py-2 text-sm font-medium no-underline
+      transition-colors;
+  }
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-45;
+  }
+  .btn-primary {
+    @apply bg-jwblue text-white hover:bg-jwblue-deep;
+  }
+  .btn-ghost {
+    @apply border-line-strong bg-white text-ink hover:border-jwblue hover:text-jwblue-deep;
+  }
+  .btn-link {
+    @apply border-0 bg-transparent px-1 py-1.5 text-xs text-ink-faint hover:text-danger;
+  }
+
+  .field {
+    @apply min-w-0 rounded-lg border border-line-strong bg-white px-[11px] py-2
+      text-sm text-ink hover:border-jwblue;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full py-[3px]
+      pl-2 pr-2.5 text-xs font-medium
+      before:size-1.5 before:rounded-full before:bg-current before:content-[''];
+  }
+  .pill-disponivel {
+    @apply bg-sage-wash text-sage-ink;
+  }
+  .pill-designado {
+    @apply bg-jwblue-wash text-jwblue-deep;
+  }
+  .pill-inativo {
+    @apply bg-mist text-ink-soft;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 import { VitePWA } from "vite-plugin-pwa";
 
@@ -8,6 +9,7 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),
     basicSsl(),
     VitePWA({
       registerType: "autoUpdate",
@@ -15,7 +17,7 @@ export default defineConfig({
         name: "super-train",
         short_name: "super-train",
         description: "Territórios de campo da congregação",
-        theme_color: "#0b3d91",
+        theme_color: "#33507d",
         display: "standalone",
         start_url: "/",
       },
