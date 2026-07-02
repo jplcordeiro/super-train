@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
-# Dependências e build (frontend React+Vite, quando existir)
+# Dependências e build (frontend React+Vite)
 node_modules/
 dist/
+dev-dist/
+*.local
+*.log
