@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 /* ---- Design tokens: jw.org-derived, desaturated palette ---- */
 @theme {
@@ -29,6 +32,56 @@
   --shadow-card: 0 1px 2px rgb(41 50 60 / 0.04), 0 6px 20px rgb(41 50 60 / 0.05);
 }
 
+/* ---- shadcn/ui semantic tokens, mapped onto the jw.org palette ---- */
+:root {
+  --radius: 0.5rem;
+
+  --background: #eef1f5; /* paper */
+  --foreground: #29323c; /* ink */
+  --card: #ffffff;
+  --card-foreground: #29323c;
+  --popover: #ffffff;
+  --popover-foreground: #29323c;
+  --primary: #486492; /* jwblue */
+  --primary-foreground: #ffffff;
+  --secondary: #eceff3; /* mist */
+  --secondary-foreground: #29323c;
+  --muted: #eceff3;
+  --muted-foreground: #67707d; /* ink-soft */
+  --accent: #e7edf6; /* jwblue-wash */
+  --accent-foreground: #33507d; /* jwblue-deep */
+  --destructive: #a4483f; /* danger */
+  --border: #dde3ea; /* line */
+  --input: #cdd5e0; /* line-strong */
+  --ring: #486492; /* jwblue */
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
 @layer base {
   html {
     color-scheme: light;
@@ -40,47 +93,6 @@
   :where(a, button, input, select, label):focus-visible {
     outline: 2px solid var(--color-jwblue);
     outline-offset: 2px;
-  }
-}
-
-/* ---- Reused primitives (everything else is inline utilities) ---- */
-@layer components {
-  .btn {
-    @apply inline-flex cursor-pointer items-center gap-2 rounded-lg border
-      border-transparent px-[15px] py-2 text-sm font-medium no-underline
-      transition-colors;
-  }
-  .btn:disabled {
-    @apply cursor-not-allowed opacity-45;
-  }
-  .btn-primary {
-    @apply bg-jwblue text-white hover:bg-jwblue-deep;
-  }
-  .btn-ghost {
-    @apply border-line-strong bg-white text-ink hover:border-jwblue hover:text-jwblue-deep;
-  }
-  .btn-link {
-    @apply border-0 bg-transparent px-1 py-1.5 text-xs text-ink-faint hover:text-danger;
-  }
-
-  .field {
-    @apply min-w-0 rounded-lg border border-line-strong bg-white px-[11px] py-2
-      text-sm text-ink hover:border-jwblue;
-  }
-
-  .pill {
-    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full py-[3px]
-      pl-2 pr-2.5 text-xs font-medium
-      before:size-1.5 before:rounded-full before:bg-current before:content-[''];
-  }
-  .pill-disponivel {
-    @apply bg-sage-wash text-sage-ink;
-  }
-  .pill-designado {
-    @apply bg-jwblue-wash text-jwblue-deep;
-  }
-  .pill-inativo {
-    @apply bg-mist text-ink-soft;
   }
 
   @media (prefers-reduced-motion: reduce) {

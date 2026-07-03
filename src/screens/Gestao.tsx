@@ -5,6 +5,36 @@ import { listPublicadores, criarPublicador } from "../lib/publicadores";
 import { designacoesAbertas, designar, devolver } from "../lib/designacoes";
 import type { Territorio, Publicador, Designacao } from "../lib/types";
 import { TerritorioGlyph } from "./TerritorioGlyph";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+const STATUS_BADGE = {
+  disponivel: "bg-sage-wash text-sage-ink",
+  designado: "bg-jwblue-wash text-jwblue-deep",
+  inativo: "bg-mist text-ink-soft",
+} as const;
 
 const STATUS_LABEL = {
   disponivel: "Disponível",
@@ -52,16 +82,17 @@ export function Gestao() {
   }
 
   async function excluir(t: Territorio) {
-    if (!window.confirm(`Excluir o território Nº ${t.numero}? Esta ação não pode ser desfeita.`))
-      return;
     try {
       await excluirTerritorio(t.id);
+      toast.success(`Território Nº ${t.numero} excluído.`);
       carregar();
     } catch (err) {
       if ((err as { code?: string }).code === "23503") {
-        alert("Não é possível excluir: este território tem histórico de designações.");
+        toast.error(
+          "Não é possível excluir: este território tem histórico de designações.",
+        );
       } else {
-        alert("Não foi possível excluir o território. Tente novamente.");
+        toast.error("Não foi possível excluir o território. Tente novamente.");
       }
     }
   }
@@ -123,9 +154,9 @@ export function Gestao() {
           <h2 className="text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-ink-soft">
             Territórios
           </h2>
-          <Link className="btn btn-primary" to="/cadastro">
-            Cadastrar território
-          </Link>
+          <Button asChild>
+            <Link to="/cadastro">Cadastrar território</Link>
+          </Button>
         </div>
 
         {territorios.length === 0 ? (
@@ -159,9 +190,14 @@ export function Gestao() {
                   </div>
 
                   <div className="grid justify-items-end gap-[3px] text-right">
-                    <span className={`pill pill-${status}`}>
+                    <Badge
+                      className={cn(
+                        "gap-1.5 pl-2 pr-2.5 before:size-1.5 before:rounded-full before:bg-current before:content-['']",
+                        STATUS_BADGE[status],
+                      )}
+                    >
                       {STATUS_LABEL[status]}
-                    </span>
+                    </Badge>
                     {d && (
                       <span className="text-[0.76rem] text-ink-faint">
                         <b className="font-medium text-ink-soft">
@@ -174,54 +210,81 @@ export function Gestao() {
 
                   <div className="col-span-full flex flex-wrap items-center gap-2 border-t border-line pt-3">
                     {d ? (
-                      <button
-                        className="btn btn-ghost"
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={async () => {
                           await devolver(d.id);
                           carregar();
                         }}
                       >
                         Devolver
-                      </button>
+                      </Button>
                     ) : (
-                      <select
-                        className="field"
-                        defaultValue=""
-                        onChange={async (e) => {
-                          if (e.target.value) {
-                            await designar(t.id, e.target.value);
-                            carregar();
-                          }
+                      <Select
+                        disabled={publicadores.length === 0}
+                        onValueChange={async (v) => {
+                          await designar(t.id, v);
+                          carregar();
                         }}
                       >
-                        <option value="" disabled>
-                          Designar a…
-                        </option>
-                        {publicadores.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.nome}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger size="sm">
+                          <SelectValue placeholder="Designar a…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {publicadores.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
 
                     <span className="flex-1" />
 
-                    <label className="inline-flex cursor-pointer select-none items-center gap-1.5 text-[0.82rem] text-ink-soft">
-                      <input
-                        type="checkbox"
-                        className="h-[15px] w-[15px] accent-jwblue"
+                    <label className="inline-flex cursor-pointer select-none items-center gap-2 text-[0.82rem] text-ink-soft">
+                      <Checkbox
                         checked={t.ativo}
-                        onChange={async (e) => {
-                          await setAtivo(t.id, e.target.checked);
+                        onCheckedChange={async (v) => {
+                          await setAtivo(t.id, v === true);
                           carregar();
                         }}
                       />
-                      ativo
+                      Ativo
                     </label>
-                    <button className="btn btn-link" onClick={() => excluir(t)}>
-                      Excluir
-                    </button>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto px-1 py-1.5 text-xs text-ink-faint hover:bg-transparent hover:text-destructive"
+                        >
+                          Excluir
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Excluir o território Nº {t.numero}?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação não pode ser desfeita.
+                            {t.nome ? ` (${t.nome})` : ""}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            variant="destructive"
+                            onClick={() => excluir(t)}
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </li>
               );
@@ -235,25 +298,21 @@ export function Gestao() {
           Publicadores
         </h2>
         <div className="flex flex-wrap gap-2">
-          <input
-            className="field flex-1 basis-40"
+          <Input
+            className="flex-1 basis-40"
             placeholder="Nome*"
             value={novoNome}
             onChange={(e) => setNovoNome(e.target.value)}
           />
-          <input
-            className="field flex-1 basis-40"
+          <Input
+            className="flex-1 basis-40"
             placeholder="Telefone"
             value={novoTel}
             onChange={(e) => setNovoTel(e.target.value)}
           />
-          <button
-            className="btn btn-primary"
-            onClick={addPublicador}
-            disabled={!novoNome}
-          >
+          <Button onClick={addPublicador} disabled={!novoNome}>
             Adicionar
-          </button>
+          </Button>
         </div>
         {publicadores.length === 0 ? (
           <p className="py-1 text-[0.88rem] text-ink-faint">
