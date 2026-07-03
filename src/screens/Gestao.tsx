@@ -50,12 +50,21 @@ function formatData(iso: string) {
   return d && m && y ? `${d}/${m}/${y}` : iso;
 }
 
+// "11912345678" -> "(11) 91234-5678"; "1132145678" -> "(11) 3214-5678"
+function formatTelefone(tel: string) {
+  const d = tel.replace(/\D/g, "");
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return tel; // formato inesperado: mostra como está
+}
+
 export function Gestao() {
   const [territorios, setTerritorios] = useState<Territorio[]>([]);
   const [publicadores, setPublicadores] = useState<Publicador[]>([]);
   const [abertas, setAbertas] = useState<Designacao[]>([]);
   const [novoNome, setNovoNome] = useState("");
   const [novoTel, setNovoTel] = useState("");
+  const [carregando, setCarregando] = useState(true);
 
   async function carregar() {
     const [t, p, d] = await Promise.all([
@@ -68,7 +77,8 @@ export function Gestao() {
     setAbertas(d);
   }
   useEffect(() => {
-    carregar();
+    // só o carregamento inicial mostra o skeleton; recargas após ações não
+    carregar().finally(() => setCarregando(false));
   }, []);
 
   const abertaDe = (tid: string) => abertas.find((d) => d.territorio_id === tid);
@@ -172,7 +182,27 @@ export function Gestao() {
           </Button>
         </div>
 
-        {territorios.length === 0 ? (
+        {carregando ? (
+          <ul
+            role="status"
+            aria-label="Carregando territórios"
+            className="grid grid-cols-1 gap-3 min-[620px]:grid-cols-2"
+          >
+            {Array.from({ length: 4 }).map((_, i) => (
+              <li
+                key={i}
+                className="flex items-center gap-3.5 rounded-xl border border-line bg-white px-4 py-3.5 shadow-card"
+              >
+                <div className="h-11 w-11 flex-none animate-pulse rounded-lg bg-mist" />
+                <div className="grid flex-1 gap-2">
+                  <div className="h-4 w-12 animate-pulse rounded bg-mist" />
+                  <div className="h-3 w-24 animate-pulse rounded bg-mist" />
+                </div>
+                <div className="h-6 w-20 flex-none animate-pulse rounded-full bg-mist" />
+              </li>
+            ))}
+          </ul>
+        ) : territorios.length === 0 ? (
           <p className="py-1 text-[0.88rem] text-ink-faint">
             Nenhum território ainda. Comece cadastrando o primeiro.
           </p>
@@ -341,7 +371,7 @@ export function Gestao() {
                 {p.nome}
                 {p.telefone && (
                   <span className="font-mono text-[0.78rem] tabular-nums text-ink-faint">
-                    {p.telefone}
+                    {formatTelefone(p.telefone)}
                   </span>
                 )}
               </li>
