@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listTerritorios, setAtivo, statusTerritorio, excluirTerritorio } from "../lib/territorios";
-import { listPublicadores, criarPublicador } from "../lib/publicadores";
+import { listPublicadores, criarPublicador, excluirPublicador } from "../lib/publicadores";
 import { designacoesAbertas, designar, devolver } from "../lib/designacoes";
 import type { Territorio, Publicador, Designacao } from "../lib/types";
-import { LogOut, MapPin } from "lucide-react";
+import { LogOut, MapPin, X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { TerritorioGlyph } from "./TerritorioGlyph";
 import { Button } from "@/components/ui/button";
@@ -105,6 +105,22 @@ export function Gestao() {
         );
       } else {
         toast.error("Não foi possível excluir o território. Tente novamente.");
+      }
+    }
+  }
+
+  async function excluirPub(p: Publicador) {
+    try {
+      await excluirPublicador(p.id);
+      toast.success(`Publicador ${p.nome} excluído.`);
+      carregar();
+    } catch (err) {
+      if ((err as { code?: string }).code === "23503") {
+        toast.error(
+          "Não é possível excluir: este publicador tem histórico de designações.",
+        );
+      } else {
+        toast.error("Não foi possível excluir o publicador. Tente novamente.");
       }
     }
   }
@@ -380,14 +396,46 @@ export function Gestao() {
             {publicadores.map((p) => (
               <li
                 key={p.id}
-                className="inline-flex items-baseline gap-2 rounded-full border border-line bg-white px-[13px] py-[7px] text-[0.88rem]"
+                className="inline-flex items-center gap-2 rounded-full border border-line bg-white py-[6px] pl-[13px] pr-[7px] text-[0.88rem]"
               >
-                {p.nome}
-                {p.telefone && (
-                  <span className="font-mono text-[0.78rem] tabular-nums text-ink-soft">
-                    {formatTelefone(p.telefone)}
-                  </span>
-                )}
+                <span className="inline-flex items-baseline gap-2">
+                  {p.nome}
+                  {p.telefone && (
+                    <span className="font-mono text-[0.78rem] tabular-nums text-ink-soft">
+                      {formatTelefone(p.telefone)}
+                    </span>
+                  )}
+                </span>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={`Excluir ${p.nome}`}
+                      className="grid size-5 flex-none place-items-center rounded-full text-ink-faint transition-colors hover:bg-danger/10 hover:text-destructive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-destructive"
+                    >
+                      <X className="size-3.5" aria-hidden="true" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Excluir o publicador {p.nome}?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={() => excluirPub(p)}
+                      >
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </li>
             ))}
           </ul>
