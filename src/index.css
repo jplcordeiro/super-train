@@ -104,7 +104,7 @@
   }
 }
 
-/* ---- Login: "você está aqui" locator pulse on the território seal ---- */
+/* ---- Locator seal: "você está aqui" pulse (Login) + boot trace (splash) ---- */
 @layer components {
   .locator-ping {
     transform-box: fill-box;
@@ -113,6 +113,11 @@
   }
   .locator-ping--lag {
     animation-delay: 1.4s;
+  }
+  /* surveyor's dash chasing the boundary while the app boots (pathLength=100) */
+  .seal-trace {
+    stroke-dasharray: 16 84;
+    animation: seal-trace 2.4s linear infinite;
   }
 }
 
@@ -128,9 +133,21 @@
   }
 }
 
+@keyframes seal-trace {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .locator-ping {
     animation: none;
     opacity: 0;
+  }
+  /* hold the boundary as a quiet, evenly-dashed survey line — no motion */
+  .seal-trace {
+    animation: none;
+    stroke-dasharray: 4 6;
+    opacity: 0.5;
   }
 }

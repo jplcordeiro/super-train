@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { BaseMap } from "../map/BaseMap";
 import type { ViewState } from "../map/BaseMap";
 import { TerritorioPolygon } from "../map/TerritorioPolygon";
@@ -105,10 +106,19 @@ export function Campo() {
   const c = t.limites ? centro(t.limites) : null;
 
   return (
-    <div style={{ height: "100dvh" }}>
+    <div className="relative h-[100dvh] w-full overflow-hidden">
       <BaseMap showLocation initialViewState={c ?? undefined}>
         {t.limites && <TerritorioPolygon polygon={t.limites} />}
       </BaseMap>
+
+      {/* Voltar — flutua no topo-esquerdo, oposto aos controles do mapa */}
+      <Link
+        to="/"
+        className="absolute left-3 top-3 z-10 inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-white/90 px-2.5 text-[0.85rem] font-medium text-ink shadow-card backdrop-blur transition-colors hover:text-jwblue"
+      >
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        Territórios
+      </Link>
     </div>
   );
 }
