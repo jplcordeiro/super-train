@@ -104,6 +104,15 @@
   }
 }
 
+/* ---- Controles do Mapbox: alvos de toque ≥40px para uso no celular ao ar
+   livre (o padrão ~29px erra o dedo andando, uma mão, sob luz forte). ---- */
+@layer components {
+  .mapboxgl-ctrl-group button {
+    width: 40px;
+    height: 40px;
+  }
+}
+
 /* ---- Locator seal: "você está aqui" pulse (Login) + boot trace (splash) ---- */
 @layer components {
   .locator-ping {

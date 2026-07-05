@@ -24,8 +24,8 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
-        name: "super-train",
-        short_name: "super-train",
+        name: "polygon",
+        short_name: "polygon",
         description: "Territórios de campo da congregação",
         theme_color: "#33507d",
         display: "standalone",

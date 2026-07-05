@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { useRef, type ComponentRef, type ReactNode } from "react";
 import Map, { GeolocateControl, NavigationControl } from "react-map-gl/mapbox";
+import { toast } from "sonner";
 
 const token = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -18,6 +19,8 @@ export function BaseMap({
   initialViewState?: ViewState;
   children?: ReactNode;
 }) {
+  const geolocate = useRef<ComponentRef<typeof GeolocateControl>>(null);
+
   return (
     <Map
       mapboxAccessToken={token}
@@ -26,14 +29,27 @@ export function BaseMap({
       initialViewState={
         initialViewState ?? { longitude: -46.63, latitude: -23.55, zoom: 13 }
       }
+      onLoad={() => {
+        // Aciona o "você está aqui" assim que o mapa carrega: a tela existe para
+        // localizar, então não esperamos o usuário achar o botão no canto.
+        if (showLocation) geolocate.current?.trigger();
+      }}
     >
-      <NavigationControl position="top-right" />
+      {/* No celular o zoom é por pinça; os botões só disputam o canto com o
+          geolocate. Só mostramos a bússola/zoom quando não há localização. */}
+      {!showLocation && <NavigationControl position="top-right" />}
       {showLocation && (
         <GeolocateControl
+          ref={geolocate}
           position="top-right"
           trackUserLocation
           showUserHeading
           positionOptions={{ enableHighAccuracy: true }}
+          onError={() =>
+            toast.error(
+              "Ative a localização do navegador para se orientar no território.",
+            )
+          }
         />
       )}
       {children}

@@ -14,12 +14,12 @@ function AppBoot() {
     <main
       className="grid min-h-dvh place-items-center px-4"
       role="status"
-      aria-label="Carregando super-train"
+      aria-label="Carregando polygon"
     >
       <div className="flex flex-col items-center">
         <LocatorSeal tracing />
         <h1 className="mt-6 text-2xl font-semibold tracking-tight text-jwblue-deep">
-          super-train
+          polygon
         </h1>
         <p className="mt-1 text-sm text-ink-soft">
           Territórios de campo da congregação

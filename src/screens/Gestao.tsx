@@ -4,7 +4,7 @@ import { listTerritorios, setAtivo, statusTerritorio, excluirTerritorio } from "
 import { listPublicadores, criarPublicador } from "../lib/publicadores";
 import { designacoesAbertas, designar, devolver } from "../lib/designacoes";
 import type { Territorio, Publicador, Designacao } from "../lib/types";
-import { LogOut } from "lucide-react";
+import { LogOut, MapPin } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { TerritorioGlyph } from "./TerritorioGlyph";
 import { Button } from "@/components/ui/button";
@@ -114,7 +114,7 @@ export function Gestao() {
   ).length;
   const designados = abertas.length;
 
-  const dt = "order-2 text-[0.68rem] uppercase tracking-[0.08em] text-ink-faint";
+  const dt = "order-2 text-[0.68rem] uppercase tracking-[0.08em] text-ink-soft";
   const ddBase =
     "order-1 m-0 font-mono text-2xl font-medium leading-none tabular-nums";
 
@@ -138,7 +138,7 @@ export function Gestao() {
           </svg>
           <div>
             <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink">
-              super-train
+              polygon
             </h1>
             <p className="mt-0.5 text-[0.82rem] tracking-[0.01em] text-ink-soft">
               Gestão de territórios
@@ -203,7 +203,7 @@ export function Gestao() {
             ))}
           </ul>
         ) : territorios.length === 0 ? (
-          <p className="py-1 text-[0.88rem] text-ink-faint">
+          <p className="py-1 text-[0.88rem] text-ink-soft">
             Nenhum território ainda. Comece cadastrando o primeiro.
           </p>
         ) : (
@@ -216,16 +216,26 @@ export function Gestao() {
                   key={t.id}
                   className="grid grid-cols-[auto_1fr_auto] items-center gap-3.5 rounded-xl border border-line bg-white px-4 py-3.5 shadow-card"
                 >
-                  <div className="h-11 w-11 flex-none text-jwblue">
+                  {/* O selo é a "cara" do território e o alvo natural do mapa:
+                      tocá-lo abre a navegação de campo. */}
+                  <Link
+                    to={`/campo/${t.id}`}
+                    aria-label={`Abrir mapa do território Nº ${t.numero}`}
+                    className="h-11 w-11 flex-none rounded-lg text-jwblue transition-shadow hover:ring-2 hover:ring-jwblue/25"
+                  >
                     <TerritorioGlyph poligono={t.limites} />
-                  </div>
+                  </Link>
 
                   <div className="grid min-w-0 gap-0.5">
                     <Link
-                      className="w-fit font-mono text-[1.15rem] font-medium tracking-[-0.01em] tabular-nums text-ink no-underline hover:text-jwblue hover:underline hover:underline-offset-[3px]"
+                      className="flex w-fit items-center gap-1 font-mono text-[1.15rem] font-medium tracking-[-0.01em] tabular-nums text-ink no-underline hover:text-jwblue"
                       to={`/campo/${t.id}`}
                     >
                       {t.numero}
+                      <MapPin
+                        className="size-3.5 flex-none text-jwblue"
+                        aria-hidden="true"
+                      />
                     </Link>
                     <span className="truncate text-[0.9rem] text-ink-soft">
                       {t.nome ?? "Sem nome"}
@@ -242,8 +252,8 @@ export function Gestao() {
                       {STATUS_LABEL[status]}
                     </Badge>
                     {d && (
-                      <span className="text-[0.76rem] text-ink-faint">
-                        <b className="font-medium text-ink-soft">
+                      <span className="text-[0.76rem] text-ink-soft">
+                        <b className="font-medium text-ink">
                           {nomePub(d.publicador_id)}
                         </b>{" "}
                         · desde {formatData(d.data_saida)}
@@ -258,6 +268,7 @@ export function Gestao() {
                         size="sm"
                         onClick={async () => {
                           await devolver(d.id);
+                          toast.success(`Território Nº ${t.numero} devolvido.`);
                           carregar();
                         }}
                       >
@@ -268,6 +279,9 @@ export function Gestao() {
                         disabled={publicadores.length === 0}
                         onValueChange={async (v) => {
                           await designar(t.id, v);
+                          toast.success(
+                            `Território Nº ${t.numero} designado a ${nomePub(v)}.`,
+                          );
                           carregar();
                         }}
                       >
@@ -302,7 +316,7 @@ export function Gestao() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-auto px-1 py-1.5 text-xs text-ink-faint hover:bg-transparent hover:text-destructive"
+                          className="min-h-9 px-2 text-xs text-ink-soft hover:bg-transparent hover:text-destructive"
                         >
                           Excluir
                         </Button>
@@ -358,7 +372,7 @@ export function Gestao() {
           </Button>
         </div>
         {publicadores.length === 0 ? (
-          <p className="py-1 text-[0.88rem] text-ink-faint">
+          <p className="py-1 text-[0.88rem] text-ink-soft">
             Nenhum publicador cadastrado.
           </p>
         ) : (
@@ -370,7 +384,7 @@ export function Gestao() {
               >
                 {p.nome}
                 {p.telefone && (
-                  <span className="font-mono text-[0.78rem] tabular-nums text-ink-faint">
+                  <span className="font-mono text-[0.78rem] tabular-nums text-ink-soft">
                     {formatTelefone(p.telefone)}
                   </span>
                 )}
