@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Territorio, Designacao } from "./types";
+import type { Territorio, Designacao, Limites } from "./types";
 
 export type StatusTerritorio = "disponivel" | "designado" | "inativo";
 
@@ -14,19 +14,28 @@ export function statusTerritorio(
 
 export type Bounds = [[number, number], [number, number]];
 
+export type Quadra = GeoJSON.Position[][];
+
+export function quadrasDe(limites: Limites | null): Quadra[] {
+  if (!limites) return [];
+  return limites.type === "MultiPolygon" ? limites.coordinates : [limites.coordinates];
+}
+
 export function boundsDeTerritorios(territorios: Territorio[]): Bounds | null {
   let minLng = Infinity,
     minLat = Infinity,
     maxLng = -Infinity,
     maxLat = -Infinity;
   for (const t of territorios) {
-    const ring = t.limites?.coordinates?.[0];
-    if (!ring?.length) continue;
-    for (const [lng, lat] of ring) {
-      if (lng < minLng) minLng = lng;
-      if (lat < minLat) minLat = lat;
-      if (lng > maxLng) maxLng = lng;
-      if (lat > maxLat) maxLat = lat;
+    for (const quadra of quadrasDe(t.limites)) {
+      for (const anel of quadra) {
+        for (const [lng, lat] of anel) {
+          if (lng < minLng) minLng = lng;
+          if (lat < minLat) minLat = lat;
+          if (lng > maxLng) maxLng = lng;
+          if (lat > maxLat) maxLat = lat;
+        }
+      }
     }
   }
   if (minLng === Infinity) return null;

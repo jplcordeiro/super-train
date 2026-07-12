@@ -1,8 +1,10 @@
+export type Limites = GeoJSON.Polygon | GeoJSON.MultiPolygon;
+
 export interface Territorio {
   id: string;
   numero: string;
   nome: string | null;
-  limites: GeoJSON.Polygon | null;
+  limites: Limites | null;
   ativo: boolean;
   created_at: string;
 }
