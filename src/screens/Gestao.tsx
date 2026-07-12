@@ -249,7 +249,7 @@ export function Gestao() {
                     aria-label={`Abrir mapa do território Nº ${t.numero}`}
                     className="h-11 w-11 flex-none rounded-lg text-jwblue transition-shadow hover:ring-2 hover:ring-jwblue/25"
                   >
-                    <TerritorioGlyph poligono={t.limites as GeoJSON.Polygon | null} />
+                    <TerritorioGlyph limites={t.limites} />
                   </Link>
 
                   <div className="grid min-w-0 gap-0.5">
