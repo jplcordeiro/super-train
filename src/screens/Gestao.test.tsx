@@ -26,13 +26,16 @@ vi.mock("../lib/designacoes", () => ({
 }));
 
 describe("Gestao", () => {
-  it("mostra o território como disponível", async () => {
+  it("lista o território cadastrado", async () => {
     render(
       <MemoryRouter>
         <Gestao />
       </MemoryRouter>,
     );
     await waitFor(() => expect(screen.getByText(/12/)).toBeInTheDocument());
-    expect(screen.getByText(/disponível/i)).toBeInTheDocument();
+    expect(screen.getByText("Centro")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Abrir mapa do território Nº 12" }),
+    ).toBeInTheDocument();
   });
 });

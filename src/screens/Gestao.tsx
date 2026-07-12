@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listTerritorios, setAtivo, statusTerritorio, excluirTerritorio } from "../lib/territorios";
+import { listTerritorios, excluirTerritorio } from "../lib/territorios";
 import { listPublicadores, criarPublicador, excluirPublicador } from "../lib/publicadores";
 import {
   designacoesAbertas,
-  designar,
   devolver,
   contagemPorPublicador,
 } from "../lib/designacoes";
@@ -13,16 +12,7 @@ import { LogOut, MapPin, X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { TerritorioGlyph } from "./TerritorioGlyph";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,19 +25,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-
-const STATUS_BADGE = {
-  disponivel: "bg-sage-wash text-sage-ink",
-  designado: "bg-jwblue-wash text-jwblue-deep",
-  inativo: "bg-mist text-ink-soft",
-} as const;
-
-const STATUS_LABEL = {
-  disponivel: "Disponível",
-  designado: "Designado",
-  inativo: "Inativo",
-} as const;
 
 function formatData(iso: string) {
   const [y, m, d] = iso.split("-");
@@ -130,15 +107,6 @@ export function Gestao() {
     }
   }
 
-  const disponiveis = territorios.filter(
-    (t) => statusTerritorio(t, abertaDe(t.id)) === "disponivel",
-  ).length;
-  const designados = abertas.length;
-
-  const dt = "order-2 text-[0.68rem] uppercase tracking-[0.08em] text-ink-soft";
-  const ddBase =
-    "order-1 m-0 font-mono text-2xl font-medium leading-none tabular-nums";
-
   return (
     <div className="mx-auto grid max-w-220 gap-[clamp(20px,4vw,32px)] px-[clamp(14px,4vw,32px)] pt-[clamp(16px,4vw,40px)] pb-16">
       <header className="flex flex-wrap items-end justify-between gap-5 border-b border-line pb-[clamp(16px,3vw,24px)]">
@@ -176,20 +144,6 @@ export function Gestao() {
             <LogOut aria-hidden="true" />
             Sair
           </Button>
-          <dl className="flex gap-5.5">
-            <div className="grid gap-px text-right">
-              <dt className={dt}>Territórios</dt>
-              <dd className={`${ddBase} text-ink`}>{territorios.length}</dd>
-            </div>
-            <div className="grid gap-px text-right">
-              <dt className={dt}>Disponíveis</dt>
-              <dd className={`${ddBase} text-sage`}>{disponiveis}</dd>
-            </div>
-            <div className="grid gap-px text-right">
-              <dt className={dt}>Designados</dt>
-              <dd className={`${ddBase} text-jwblue`}>{designados}</dd>
-            </div>
-          </dl>
         </div>
       </header>
 
@@ -239,7 +193,6 @@ export function Gestao() {
           <ul className="grid grid-cols-1 gap-3 min-[620px]:grid-cols-2">
             {territorios.map((t) => {
               const d = abertaDe(t.id);
-              const status = statusTerritorio(t, d);
               return (
                 <li
                   key={t.id}
@@ -272,14 +225,6 @@ export function Gestao() {
                   </div>
 
                   <div className="grid justify-items-end gap-0.75 text-right">
-                    <Badge
-                      className={cn(
-                        "gap-1.5 pl-2 pr-2.5 before:size-1.5 before:rounded-full before:bg-current before:content-['']",
-                        STATUS_BADGE[status],
-                      )}
-                    >
-                      {STATUS_LABEL[status]}
-                    </Badge>
                     {d && (
                       <span className="text-[0.76rem] text-ink-soft">
                         <b className="font-medium text-ink">
@@ -291,7 +236,7 @@ export function Gestao() {
                   </div>
 
                   <div className="col-span-full flex flex-wrap items-center gap-2 border-t border-line pt-3">
-                    {d ? (
+                    {d && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -303,28 +248,6 @@ export function Gestao() {
                       >
                         Devolver
                       </Button>
-                    ) : (
-                      <Select
-                        disabled={publicadores.length === 0}
-                        onValueChange={async (v) => {
-                          await designar(t.id, v);
-                          toast.success(
-                            `Território Nº ${t.numero} designado a ${nomePub(v)}.`,
-                          );
-                          carregar();
-                        }}
-                      >
-                        <SelectTrigger size="sm">
-                          <SelectValue placeholder="Designar a…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {publicadores.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     )}
 
                     <Button variant="outline" size="sm" asChild>
@@ -332,17 +255,6 @@ export function Gestao() {
                     </Button>
 
                     <span className="flex-1" />
-
-                    <label className="inline-flex cursor-pointer select-none items-center gap-2 text-[0.82rem] text-ink-soft">
-                      <Checkbox
-                        checked={t.ativo}
-                        onCheckedChange={async (v) => {
-                          await setAtivo(t.id, v === true);
-                          carregar();
-                        }}
-                      />
-                      Ativo
-                    </label>
 
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
