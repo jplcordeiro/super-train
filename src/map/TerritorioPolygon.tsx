@@ -1,9 +1,10 @@
 import { Source, Layer } from "react-map-gl/mapbox";
+import type { Limites } from "../lib/types";
 
-export function TerritorioPolygon({ polygon }: { polygon: GeoJSON.Polygon }) {
+export function TerritorioPolygon({ limites }: { limites: Limites }) {
   const feature: GeoJSON.Feature = {
     type: "Feature",
-    geometry: polygon,
+    geometry: limites,
     properties: {},
   };
   return (

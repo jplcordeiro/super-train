@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Source, Layer, useMap } from "react-map-gl/mapbox";
-import type { Territorio } from "../lib/types";
+import type { Territorio, Limites } from "../lib/types";
 import type { StatusTerritorio } from "../lib/territorios";
 
 const CORES: Record<StatusTerritorio, { fill: string; line: string }> = {
@@ -39,7 +39,7 @@ export function TerritoriosLayer({
       .filter((t) => t.limites)
       .map((t) => ({
         type: "Feature",
-        geometry: t.limites as GeoJSON.Polygon,
+        geometry: t.limites as Limites,
         properties: { id: t.id, numero: t.numero, status: statusDe(t) },
       })),
   };

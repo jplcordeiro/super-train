@@ -2,22 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { BaseMap } from "../map/BaseMap";
-import type { ViewState } from "../map/BaseMap";
 import { TerritorioPolygon } from "../map/TerritorioPolygon";
-import { listTerritorios } from "../lib/territorios";
+import { listTerritorios, boundsDeTerritorios } from "../lib/territorios";
 import type { Territorio } from "../lib/types";
 import { Button } from "@/components/ui/button";
 import { RadarLoader } from "../components/RadarLoader";
-
-function centro(p: GeoJSON.Polygon): ViewState | null {
-  const ring = p.coordinates?.[0];
-  if (!ring?.length) return null;
-  const [sx, sy] = ring.reduce(
-    ([ax, ay], [x, y]) => [ax + x, ay + y],
-    [0, 0],
-  );
-  return { longitude: sx / ring.length, latitude: sy / ring.length, zoom: 15 };
-}
 
 export function Campo() {
   const { id } = useParams();
@@ -65,12 +54,12 @@ export function Campo() {
       </div>
     );
 
-  const c = t.limites ? centro(t.limites as GeoJSON.Polygon) : null;
+  const bounds = boundsDeTerritorios([t]);
 
   return (
     <div className="relative h-dvh w-full overflow-hidden">
-      <BaseMap showLocation initialViewState={c ?? undefined}>
-        {t.limites && <TerritorioPolygon polygon={t.limites as GeoJSON.Polygon} />}
+      <BaseMap showLocation bounds={bounds ?? undefined}>
+        {t.limites && <TerritorioPolygon limites={t.limites} />}
       </BaseMap>
 
       <Link
