@@ -253,7 +253,7 @@ export function Calendario() {
 
         <div className="ml-auto text-right">
           <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-ink-soft">
-            Saída de campo
+            Saídas de campo
           </p>
           <h1 className="mt-1 text-[clamp(1.6rem,4vw,2.2rem)] font-semibold leading-none tracking-[-0.02em] text-jwblue-deep">
             {MES_NOME[mes.mes - 1]}{" "}
@@ -377,7 +377,7 @@ export function Calendario() {
                         {DIA_SEMANA[dow]}
                       </span>
                       {ehHoje && (
-                        <span className="ml-auto text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-jwblue-deep">
+                        <span className="ml-auto text-[0.68rem] font-semibold uppercase tracking-widest text-jwblue-deep">
                           hoje
                         </span>
                       )}
