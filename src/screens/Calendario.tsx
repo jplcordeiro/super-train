@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Plus, Printer, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Printer, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   diaDaSemana,
@@ -45,18 +45,18 @@ import {
 import { cn } from "@/lib/utils";
 
 const MES_NOME = [
-  "janeiro",
-  "fevereiro",
-  "março",
-  "abril",
-  "maio",
-  "junho",
-  "julho",
-  "agosto",
-  "setembro",
-  "outubro",
-  "novembro",
-  "dezembro",
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
 ];
 
 const ABREV_DIA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
@@ -209,17 +209,17 @@ export function Calendario() {
   return (
     <div className="folha mx-auto grid max-w-300 gap-[clamp(16px,3vw,26px)] px-[clamp(12px,3vw,32px)] pt-[clamp(16px,4vw,36px)] pb-24">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-4">
-        <div>
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-ink-soft">
-            Saída de campo
-          </p>
-          <h1 className="mt-1 text-[clamp(1.6rem,4vw,2.2rem)] font-semibold leading-none tracking-[-0.02em] text-jwblue-deep">
-            {MES_NOME[mes.mes - 1]}{" "}
-            <span className="font-mono tabular-nums text-ink-faint">{mes.ano}</span>
-          </h1>
-        </div>
-
         <div className="nao-imprime flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/">
+              <ArrowLeft aria-hidden="true" />
+              Voltar
+            </Link>
+          </Button>
+          <Button size="sm" onClick={() => window.print()}>
+            <Printer aria-hidden="true" />
+            Imprimir
+          </Button>
           <div className="flex items-center rounded-lg border border-line bg-white">
             <Button
               variant="ghost"
@@ -249,13 +249,16 @@ export function Calendario() {
               <ChevronRight aria-hidden="true" />
             </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer aria-hidden="true" />
-            Imprimir
-          </Button>
-          <Button variant="ghost" size="sm" asChild className="text-ink-soft">
-            <Link to="/">Gestão</Link>
-          </Button>
+        </div>
+
+        <div className="ml-auto text-right">
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-ink-soft">
+            Saída de campo
+          </p>
+          <h1 className="mt-1 text-[clamp(1.6rem,4vw,2.2rem)] font-semibold leading-none tracking-[-0.02em] text-jwblue-deep">
+            {MES_NOME[mes.mes - 1]}{" "}
+            <span className="font-mono tabular-nums text-ink-faint">{mes.ano}</span>
+          </h1>
         </div>
       </header>
 
