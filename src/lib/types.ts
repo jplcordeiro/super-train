@@ -31,7 +31,6 @@ export interface Saida {
   id: string;
   data: string;
   periodo: Periodo;
-  hora: string | null;
   local: string | null;
   publicador_id: string | null;
   observacao: string | null;

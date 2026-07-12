@@ -3,9 +3,12 @@ import { toast } from "sonner";
 import {
   atualizarSaida,
   criarSaidas,
+  dataBR,
+  dataISO,
   datasSemanaisAteFimDoMes,
   diaDaSemana,
   DIA_SEMANA,
+  mascaraData,
   type EntradaSaida,
 } from "../lib/saidas";
 import type { Periodo, Publicador, Saida, Territorio } from "../lib/types";
@@ -44,8 +47,8 @@ export function SaidaForm({
   onCancelar,
 }: Props) {
   const [quando, setQuando] = useState(saida?.data ?? data);
+  const [textoData, setTextoData] = useState(dataBR(saida?.data ?? data));
   const [periodo, setPeriodo] = useState<Periodo>(saida?.periodo ?? "manha");
-  const [hora, setHora] = useState(saida?.hora?.slice(0, 5) ?? "");
   const [local, setLocal] = useState(saida?.local ?? "");
   const [publicadorId, setPublicadorId] = useState(
     saida?.publicador_id ?? SEM_PUBLICADOR,
@@ -69,7 +72,6 @@ export function SaidaForm({
     const entrada: EntradaSaida = {
       data: quando,
       periodo,
-      hora: hora || null,
       local: local.trim() || null,
       publicador_id: publicadorId === SEM_PUBLICADOR ? null : publicadorId,
       observacao: observacao.trim() || null,
@@ -107,9 +109,16 @@ export function SaidaForm({
         </Label>
         <Input
           id="saida-data"
-          type="date"
-          value={quando}
-          onChange={(e) => e.target.value && setQuando(e.target.value)}
+          inputMode="numeric"
+          placeholder="dd/mm/aaaa"
+          value={textoData}
+          onChange={(e) => {
+            const texto = mascaraData(e.target.value);
+            setTextoData(texto);
+            const iso = dataISO(texto);
+            if (iso) setQuando(iso);
+          }}
+          onBlur={() => setTextoData(dataBR(quando))}
         />
       </div>
 
@@ -153,36 +162,23 @@ export function SaidaForm({
         </datalist>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="grid gap-2">
-          <Label className={rotulo} htmlFor="saida-publicador">
-            Dirigente
-          </Label>
-          <Select value={publicadorId} onValueChange={setPublicadorId}>
-            <SelectTrigger id="saida-publicador" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={SEM_PUBLICADOR}>A definir</SelectItem>
-              {publicadores.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-2">
-          <Label className={rotulo} htmlFor="saida-hora">
-            Horário
-          </Label>
-          <Input
-            id="saida-hora"
-            type="time"
-            value={hora}
-            onChange={(e) => setHora(e.target.value)}
-          />
-        </div>
+      <div className="grid gap-2">
+        <Label className={rotulo} htmlFor="saida-publicador">
+          Dirigente
+        </Label>
+        <Select value={publicadorId} onValueChange={setPublicadorId}>
+          <SelectTrigger id="saida-publicador" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={SEM_PUBLICADOR}>A definir</SelectItem>
+            {publicadores.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-2">

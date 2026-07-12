@@ -19,7 +19,6 @@ vi.mock("../lib/saidas", async (orig) => {
         id: "s1",
         data: hojeISO,
         periodo: "manha",
-        hora: null,
         local: "Gruta da Ilha",
         publicador_id: "p1",
         observacao: null,
@@ -30,7 +29,6 @@ vi.mock("../lib/saidas", async (orig) => {
         id: "s2",
         data: hojeISO,
         periodo: "tarde",
-        hora: "16:30:00",
         local: "Campinho Rua A",
         publicador_id: null,
         observacao: "faltante",
@@ -85,11 +83,9 @@ describe("Calendario", () => {
     );
   });
 
-  it("mostra o horário quando a saída foge do padrão", async () => {
+  it("marca a saída da tarde", async () => {
     montar();
-    await waitFor(() =>
-      expect(screen.getAllByText(/tarde · 16:30/).length).toBeGreaterThan(0),
-    );
+    await waitFor(() => expect(screen.getAllByText("tarde").length).toBeGreaterThan(0));
   });
 
   it("carrega o aviso do mês", async () => {

@@ -57,6 +57,32 @@ export function gradeDoMes(m: Mes): string[] {
   return dias;
 }
 
+export function dataBR(data: string): string {
+  const [ano, mes, dia] = data.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
+export function dataISO(texto: string): string | null {
+  const partes = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto);
+  if (!partes) return null;
+  const [, dia, mes, ano] = partes;
+  const d = new Date(Number(ano), Number(mes) - 1, Number(dia));
+  if (
+    d.getFullYear() !== Number(ano) ||
+    d.getMonth() !== Number(mes) - 1 ||
+    d.getDate() !== Number(dia)
+  ) {
+    return null;
+  }
+  return `${ano}-${mes}-${dia}`;
+}
+
+export function mascaraData(texto: string): string {
+  const digitos = texto.replace(/\D/g, "").slice(0, 8);
+  const partes = [digitos.slice(0, 2), digitos.slice(2, 4), digitos.slice(4)];
+  return partes.filter((p) => p).join("/");
+}
+
 export function datasSemanaisAteFimDoMes(data: string): string[] {
   const m = mesDe(data);
   const ultimoDia = new Date(m.ano, m.mes, 0).getDate();
@@ -73,7 +99,6 @@ export function saidasDoDia(saidas: Saida[], data: string): Saida[] {
     .sort(
       (a, b) =>
         ORDEM_PERIODO[a.periodo] - ORDEM_PERIODO[b.periodo] ||
-        (a.hora ?? "").localeCompare(b.hora ?? "") ||
         a.created_at.localeCompare(b.created_at),
     );
 }
@@ -87,7 +112,6 @@ export function locaisUsados(saidas: Saida[]): string[] {
 export interface EntradaSaida {
   data: string;
   periodo: Periodo;
-  hora: string | null;
   local: string | null;
   publicador_id: string | null;
   observacao: string | null;

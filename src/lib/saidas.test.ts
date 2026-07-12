@@ -1,9 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
+  dataBR,
+  dataISO,
   datasSemanaisAteFimDoMes,
   diaDaSemana,
   gradeDoMes,
   locaisUsados,
+  mascaraData,
   mesVizinho,
   mesmoMes,
   saidasDoDia,
@@ -14,7 +17,6 @@ function saida(p: Partial<Saida> & { id: string }): Saida {
   return {
     data: "2026-07-05",
     periodo: "manha" as Periodo,
-    hora: null,
     local: null,
     publicador_id: null,
     observacao: null,
@@ -112,5 +114,42 @@ describe("locaisUsados", () => {
       saida({ id: "4", local: null }),
     ];
     expect(locaisUsados(lista)).toEqual(["Casa da Zezé", "Gruta da Ilha"]);
+  });
+});
+
+describe("dataBR", () => {
+  it("mostra a data no formato brasileiro", () => {
+    expect(dataBR("2026-07-05")).toBe("05/07/2026");
+  });
+});
+
+describe("dataISO", () => {
+  it("lê a data digitada no formato brasileiro", () => {
+    expect(dataISO("05/07/2026")).toBe("2026-07-05");
+  });
+
+  it("recusa data incompleta", () => {
+    expect(dataISO("05/07")).toBeNull();
+    expect(dataISO("")).toBeNull();
+  });
+
+  it("recusa dia que não existe no mês", () => {
+    expect(dataISO("31/02/2026")).toBeNull();
+    expect(dataISO("00/07/2026")).toBeNull();
+    expect(dataISO("05/13/2026")).toBeNull();
+  });
+});
+
+describe("mascaraData", () => {
+  it("vai inserindo as barras conforme se digita", () => {
+    expect(mascaraData("0")).toBe("0");
+    expect(mascaraData("05")).toBe("05");
+    expect(mascaraData("057")).toBe("05/7");
+    expect(mascaraData("05/07")).toBe("05/07");
+    expect(mascaraData("05/072026")).toBe("05/07/2026");
+  });
+
+  it("ignora o que não é dígito e o que passa de oito dígitos", () => {
+    expect(mascaraData("5a7b2026999")).toBe("57/20/2699");
   });
 });

@@ -197,11 +197,10 @@ export function Calendario() {
   }
 
   function Eyebrow({ s }: { s: Saida }) {
-    if (s.periodo === "manha" && !s.hora) return null;
+    if (s.periodo === "manha") return null;
     return (
       <span className="font-escala-mono text-[0.66rem] font-medium uppercase tracking-[0.06em] text-ink-faint">
-        {s.periodo === "manha" ? "manhã" : "tarde"}
-        {s.hora ? ` · ${s.hora.slice(0, 5)}` : ""}
+        tarde
       </span>
     );
   }
@@ -509,7 +508,6 @@ export function Calendario() {
                           <div className="grid min-w-0 flex-1 gap-0.5">
                             <span className="font-mono text-[0.68rem] uppercase tracking-[0.06em] text-ink-faint">
                               {s.periodo === "manha" ? "manhã" : "tarde"}
-                              {s.hora ? ` · ${s.hora.slice(0, 5)}` : ""}
                             </span>
                             <span className="text-[0.95rem] font-semibold text-jwblue-deep">
                               {s.local ?? "Sem ponto de encontro"}
