@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
@@ -7,42 +7,49 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { BaseMap } from "../map/BaseMap";
 import type { ViewState } from "../map/BaseMap";
-import { criarTerritorio } from "../lib/territorios";
+import { criarTerritorio, multiPolygonDe } from "../lib/territorios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-function DrawControl({ onChange }: { onChange: (p: GeoJSON.Polygon | null) => void }) {
+function DrawControl({
+  onChange,
+}: {
+  onChange: (quadras: GeoJSON.MultiPolygon | null) => void;
+}) {
+  const draw = useRef<MapboxDraw | null>(null);
+
   useControl<MapboxDraw>(
-    () =>
-      new MapboxDraw({
+    () => {
+      draw.current = new MapboxDraw({
         displayControlsDefault: false,
         controls: { polygon: true, trash: true },
-      }),
+      });
+      return draw.current;
+    },
     (evt) => {
       const map = evt.map as unknown as {
-        on: (ev: string, cb: (e: { features?: GeoJSON.Feature[] }) => void) => void;
+        on: (ev: string, cb: () => void) => void;
       };
-      const upd = (e: { features?: GeoJSON.Feature[] }) => {
-        const f = e.features?.[0];
-        onChange(f ? (f.geometry as GeoJSON.Polygon) : null);
-      };
-      map.on("draw.create", upd);
-      map.on("draw.update", upd);
-      map.on("draw.delete", () => onChange(null));
+      const atualizar = () =>
+        onChange(multiPolygonDe(draw.current?.getAll().features ?? []));
+      map.on("draw.create", atualizar);
+      map.on("draw.update", atualizar);
+      map.on("draw.delete", atualizar);
     },
   );
+
   return null;
 }
 
 export function Cadastro() {
   const [numero, setNumero] = useState("");
   const [nome, setNome] = useState("");
-  const [polygon, setPolygon] = useState<GeoJSON.Polygon | null>(null);
+  const [quadras, setQuadras] = useState<GeoJSON.MultiPolygon | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [inicial, setInicial] = useState<ViewState | undefined>(undefined);
   const [mapaPronto, setMapaPronto] = useState(false);
-  const onChange = useCallback((p: GeoJSON.Polygon | null) => setPolygon(p), []);
+  const onChange = useCallback((q: GeoJSON.MultiPolygon | null) => setQuadras(q), []);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -64,13 +71,13 @@ export function Cadastro() {
   }, []);
 
   async function salvar() {
-    if (!numero || !polygon) return;
+    if (!numero || !quadras) return;
     setSalvando(true);
     try {
-      await criarTerritorio({ numero, nome: nome || undefined, limites: polygon });
+      await criarTerritorio({ numero, nome: nome || undefined, limites: quadras });
       setNumero("");
       setNome("");
-      setPolygon(null);
+      setQuadras(null);
       toast.success(`Território Nº ${numero} salvo.`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
@@ -83,6 +90,14 @@ export function Cadastro() {
       setSalvando(false);
     }
   }
+
+  const total = quadras?.coordinates.length ?? 0;
+  const rotuloQuadras =
+    total === 0
+      ? "Desenhe as quadras do território no mapa"
+      : total === 1
+        ? "1 quadra desenhada — pronto para salvar"
+        : `${total} quadras desenhadas — pronto para salvar`;
 
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-paper">
@@ -115,14 +130,12 @@ export function Cadastro() {
             <span
               className={cn(
                 "size-2 flex-none rounded-full transition-colors",
-                polygon ? "bg-sage" : "bg-ink-faint",
+                total > 0 ? "bg-sage" : "bg-ink-faint",
               )}
               aria-hidden="true"
             />
-            <span className={polygon ? "text-sage-ink" : "text-ink-soft"}>
-              {polygon
-                ? "Limite desenhado — pronto para salvar"
-                : "Desenhe o limite do território no mapa"}
+            <span className={total > 0 ? "text-sage-ink" : "text-ink-soft"}>
+              {rotuloQuadras}
             </span>
           </div>
 
@@ -146,7 +159,7 @@ export function Cadastro() {
           <Button
             className="w-full"
             onClick={salvar}
-            disabled={!numero || !polygon || salvando}
+            disabled={!numero || !quadras || salvando}
           >
             {salvando ? "Salvando…" : "Salvar território"}
           </Button>

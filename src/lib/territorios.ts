@@ -75,7 +75,7 @@ export async function listTerritorios(): Promise<Territorio[]> {
 export async function criarTerritorio(input: {
   numero: string;
   nome?: string;
-  limites: GeoJSON.Polygon;
+  limites: GeoJSON.MultiPolygon;
 }): Promise<Territorio> {
   const { data, error } = await supabase
     .from("territorio")
