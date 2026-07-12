@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-function DrawControl({
+export function DrawControl({
   desenhoInicial,
   onChange,
 }: {
@@ -32,14 +32,12 @@ function DrawControl({
   const atualizar = () =>
     onChange(multiPolygonDe(draw.current?.getAll().features ?? []));
 
-  useControl<MapboxDraw>(
-    () => {
-      draw.current = new MapboxDraw({
+  draw.current = useControl<MapboxDraw>(
+    () =>
+      new MapboxDraw({
         displayControlsDefault: false,
         controls: { polygon: true, trash: true },
-      });
-      return draw.current;
-    },
+      }),
     (evt) => {
       const m = evt.map as unknown as {
         on: (ev: string, cb: () => void) => void;
