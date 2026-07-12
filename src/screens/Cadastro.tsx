@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate, useBlocker } from "react-router-dom";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { useControl, useMap } from "react-map-gl/mapbox";
@@ -18,6 +18,16 @@ import {
 } from "../lib/territorios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 export function DrawControl({
@@ -66,6 +76,14 @@ export function DrawControl({
   return null;
 }
 
+const estadoDe = (
+  numero: string,
+  nome: string,
+  quadras: GeoJSON.MultiPolygon | null,
+) => JSON.stringify([numero.trim(), nome.trim(), quadras?.coordinates ?? null]);
+
+const VAZIO = estadoDe("", "", null);
+
 export function Cadastro() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -78,7 +96,17 @@ export function Cadastro() {
   const [desenhoInicial, setDesenhoInicial] =
     useState<GeoJSON.FeatureCollection | null>(null);
   const [mapaPronto, setMapaPronto] = useState(false);
+  const [salvo, setSalvo] = useState(VAZIO);
+  const saindoAposSalvar = useRef(false);
   const onChange = useCallback((q: GeoJSON.MultiPolygon | null) => setQuadras(q), []);
+
+  const alterado = estadoDe(numero, nome, quadras) !== salvo;
+  const bloqueio = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      alterado &&
+      !saindoAposSalvar.current &&
+      currentLocation.pathname !== nextLocation.pathname,
+  );
 
   useEffect(() => {
     if (id) {
@@ -90,13 +118,13 @@ export function Cadastro() {
             navigate("/");
             return;
           }
+          const limites: GeoJSON.MultiPolygon | null = t.limites
+            ? { type: "MultiPolygon", coordinates: quadrasDe(t.limites) }
+            : null;
           setNumero(t.numero);
           setNome(t.nome ?? "");
-          setQuadras(
-            t.limites
-              ? { type: "MultiPolygon", coordinates: quadrasDe(t.limites) }
-              : null,
-          );
+          setQuadras(limites);
+          setSalvo(estadoDe(t.numero, t.nome ?? "", limites));
           setDesenhoInicial(featureCollectionDe(t.limites));
           setEnquadramento(boundsDeTerritorios([t]) ?? undefined);
           setMapaPronto(true);
@@ -137,12 +165,14 @@ export function Cadastro() {
           limites: quadras,
         });
         toast.success(`Território Nº ${numero} atualizado.`);
+        saindoAposSalvar.current = true;
         navigate("/");
       } else {
         await criarTerritorio({ numero, nome: nome || undefined, limites: quadras });
         setNumero("");
         setNome("");
         setQuadras(null);
+        setSalvo(VAZIO);
         toast.success(`Território Nº ${numero} salvo.`);
       }
     } catch (e) {
@@ -239,6 +269,34 @@ export function Cadastro() {
           </Button>
         </div>
       </div>
+
+      <AlertDialog
+        open={bloqueio.state === "blocked"}
+        onOpenChange={(aberto) => {
+          if (!aberto) bloqueio.reset?.();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair sem salvar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              As alterações neste território ainda não foram salvas. Se você sair
+              agora, elas serão perdidas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => bloqueio.reset?.()}>
+              Continuar editando
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => bloqueio.proceed?.()}
+            >
+              Sair sem salvar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
