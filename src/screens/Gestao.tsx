@@ -324,6 +324,10 @@ export function Gestao() {
                       </Select>
                     )}
 
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/cadastro/${t.id}`}>Editar</Link>
+                    </Button>
+
                     <span className="flex-1" />
 
                     <label className="inline-flex cursor-pointer select-none items-center gap-2 text-[0.82rem] text-ink-soft">
