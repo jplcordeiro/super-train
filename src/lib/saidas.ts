@@ -154,6 +154,16 @@ export async function listSaidas(de: string, ate: string): Promise<Saida[]> {
   return (data as SaidaRow[]).map(comTerritorios);
 }
 
+export async function buscarSaida(id: string): Promise<Saida | null> {
+  const { data, error } = await supabase
+    .from("saida")
+    .select(SELECT_SAIDA)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? comTerritorios(data as SaidaRow) : null;
+}
+
 async function vincularTerritorios(saida_id: string, territorio_ids: string[]) {
   if (territorio_ids.length === 0) return;
   const { error } = await supabase

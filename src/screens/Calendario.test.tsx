@@ -55,6 +55,10 @@ vi.mock("../lib/publicadores", () => ({
     .fn()
     .mockResolvedValue([{ id: "p1", nome: "Kleber", telefone: null, created_at: "" }]),
 }));
+vi.mock("../lib/quadras", async (orig) => {
+  const actual = await (orig() as Promise<Record<string, unknown>>);
+  return { ...actual, listMarcas: vi.fn().mockResolvedValue([]) };
+});
 
 function montar() {
   return render(
