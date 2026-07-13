@@ -17,6 +17,19 @@ function quadrado(lng: number, lat: number, lado = 1): GeoJSON.Polygon {
   };
 }
 
+function colecao(
+  ...quadras: [string, GeoJSON.Polygon][]
+): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
+  return {
+    type: "FeatureCollection",
+    features: quadras.map(([id, geometry]) => ({
+      type: "Feature",
+      properties: { id },
+      geometry,
+    })),
+  };
+}
+
 describe("TerritorioGlyph", () => {
   it("mostra o placeholder tracejado quando não há limites", () => {
     const { container } = render(<TerritorioGlyph limites={null} />);
@@ -24,13 +37,12 @@ describe("TerritorioGlyph", () => {
     expect(container.querySelector("rect")).toBeInTheDocument();
   });
 
-  it("desenha um subpath para um território de uma quadra", () => {
+  it("desenha um path para um território de uma quadra", () => {
     const { container } = render(<TerritorioGlyph limites={quadrado(-46, -23)} />);
-    const d = container.querySelector("path")?.getAttribute("d") ?? "";
-    expect(d.match(/M/g)).toHaveLength(1);
+    expect(container.querySelectorAll("path")).toHaveLength(1);
   });
 
-  it("desenha um subpath por quadra de um MultiPolygon", () => {
+  it("desenha um path por quadra de um MultiPolygon", () => {
     const limites: GeoJSON.MultiPolygon = {
       type: "MultiPolygon",
       coordinates: [
@@ -40,9 +52,7 @@ describe("TerritorioGlyph", () => {
       ],
     };
     const { container } = render(<TerritorioGlyph limites={limites} />);
-    const d = container.querySelector("path")?.getAttribute("d") ?? "";
-    expect(d.match(/M/g)).toHaveLength(3);
-    expect(d.match(/Z/g)).toHaveLength(3);
+    expect(container.querySelectorAll("path")).toHaveLength(3);
   });
 
   it("inverte o eixo Y: a maior latitude produz o menor y no SVG", () => {
@@ -69,10 +79,22 @@ describe("TerritorioGlyph", () => {
       coordinates: [quadrado(0, 0, 10).coordinates, quadrado(10, 0, 10).coordinates],
     };
     const { container } = render(<TerritorioGlyph limites={limites} />);
-    const d = container.querySelector("path")?.getAttribute("d") ?? "";
-    expect(d).toBe(
-      "M14.0,68.0L50.0,68.0L50.0,32.0L14.0,32.0L14.0,68.0Z" +
-        " M50.0,68.0L86.0,68.0L86.0,32.0L50.0,32.0L50.0,68.0Z",
+    const ds = [...container.querySelectorAll("path")].map((p) => p.getAttribute("d"));
+    expect(ds).toEqual([
+      "M14.0,68.0L50.0,68.0L50.0,32.0L14.0,32.0L14.0,68.0Z",
+      "M50.0,68.0L86.0,68.0L86.0,32.0L50.0,32.0L50.0,68.0Z",
+    ]);
+  });
+
+  it("pinta só as quadras feitas, deixando as que faltam no azul de sempre", () => {
+    const limites = colecao(["qa", quadrado(0, 0)], ["qb", quadrado(2, 0)]);
+    const { container } = render(
+      <TerritorioGlyph limites={limites} feitas={new Set(["qa"])} />,
     );
+    const classes = [...container.querySelectorAll("path")].map((p) =>
+      p.getAttribute("class"),
+    );
+    expect(classes[0]).toContain("fill-sage");
+    expect(classes[1]).toContain("fill-jwblue");
   });
 });
