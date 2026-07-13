@@ -13,7 +13,8 @@ Design and plan docs live in `docs/`:
 
 ## Commands
 
-- **Dev server:** `npm run dev` (localhost, fixed port 3000 via `strictPort`). For testing on a phone with real GPS: `npm run dev -- --host` — serves HTTPS (self-signed via `@vitejs/plugin-basic-ssl`) on the LAN, which the browser requires to grant geolocation off-localhost.
+- **Dev server:** `npm run dev` (localhost, fixed port 3000 via `strictPort`).
+- **Phone (real GPS):** `npm run celular` — LAN, **fixed port 3001**, HTTPS (self-signed via `@vitejs/plugin-basic-ssl`), which the browser requires to grant geolocation off-localhost. Runs alongside `npm run dev` (3000) instead of fighting it for the port. The phone opens `https://<ip-da-máquina>:3001` and has to accept the self-signed certificate once. The Mapbox token's URL allowlist must include that host, or the map comes up blank.
 - **Build (typecheck + bundle):** `npm run build` (`tsc -b && vite build`).
 - **Tests:** `npm run test` (Vitest, run mode).
 - **Single test file:** `npx vitest run src/lib/territorios.test.ts`
