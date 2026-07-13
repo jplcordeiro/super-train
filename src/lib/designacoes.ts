@@ -10,19 +10,6 @@ export async function designacoesAbertas(): Promise<Designacao[]> {
   return data as Designacao[];
 }
 
-export async function contagemPorPublicador(): Promise<Record<string, number>> {
-  const { data, error } = await supabase
-    .from("designacao")
-    .select("publicador_id")
-    .is("data_devolucao", null);
-  if (error) throw error;
-  const contagem: Record<string, number> = {};
-  for (const { publicador_id } of data as { publicador_id: string }[]) {
-    contagem[publicador_id] = (contagem[publicador_id] ?? 0) + 1;
-  }
-  return contagem;
-}
-
 export async function designar(
   territorio_id: string,
   publicador_id: string,

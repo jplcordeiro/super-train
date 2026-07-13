@@ -22,7 +22,6 @@ vi.mock("../lib/designacoes", () => ({
   designacoesAbertas: vi.fn().mockResolvedValue([]),
   designar: vi.fn(),
   devolver: vi.fn(),
-  contagemPorPublicador: vi.fn().mockResolvedValue({}),
 }));
 
 describe("Gestao", () => {

@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listTerritorios, excluirTerritorio } from "../lib/territorios";
-import { listPublicadores, criarPublicador, excluirPublicador } from "../lib/publicadores";
-import {
-  designacoesAbertas,
-  devolver,
-  contagemPorPublicador,
-} from "../lib/designacoes";
+import { listPublicadores } from "../lib/publicadores";
+import { designacoesAbertas, devolver } from "../lib/designacoes";
 import type { Territorio, Publicador, Designacao } from "../lib/types";
-import { MapPin, X } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { TerritorioGlyph } from "./TerritorioGlyph";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,33 +25,21 @@ function formatData(iso: string) {
   return d && m && y ? `${d}/${m}/${y}` : iso;
 }
 
-function formatTelefone(tel: string) {
-  const d = tel.replace(/\D/g, "");
-  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
-  return tel;
-}
-
 export function Gestao() {
   const [territorios, setTerritorios] = useState<Territorio[]>([]);
   const [publicadores, setPublicadores] = useState<Publicador[]>([]);
   const [abertas, setAbertas] = useState<Designacao[]>([]);
-  const [contagemPub, setContagemPub] = useState<Record<string, number>>({});
-  const [novoNome, setNovoNome] = useState("");
-  const [novoTel, setNovoTel] = useState("");
   const [carregando, setCarregando] = useState(true);
 
   async function carregar() {
-    const [t, p, d, c] = await Promise.all([
+    const [t, p, d] = await Promise.all([
       listTerritorios(),
       listPublicadores(),
       designacoesAbertas(),
-      contagemPorPublicador(),
     ]);
     setTerritorios(t);
     setPublicadores(p);
     setAbertas(d);
-    setContagemPub(c);
   }
   useEffect(() => {
     carregar().finally(() => setCarregando(false));
@@ -65,14 +48,6 @@ export function Gestao() {
   const abertaDe = (tid: string) => abertas.find((d) => d.territorio_id === tid);
   const nomePub = (pid: string) =>
     publicadores.find((p) => p.id === pid)?.nome ?? "?";
-
-  async function addPublicador() {
-    if (!novoNome) return;
-    await criarPublicador({ nome: novoNome, telefone: novoTel || undefined });
-    setNovoNome("");
-    setNovoTel("");
-    carregar();
-  }
 
   async function excluir(t: Territorio) {
     try {
@@ -86,22 +61,6 @@ export function Gestao() {
         );
       } else {
         toast.error("Não foi possível excluir o território. Tente novamente.");
-      }
-    }
-  }
-
-  async function excluirPub(p: Publicador) {
-    try {
-      await excluirPublicador(p.id);
-      toast.success(`Publicador ${p.nome} excluído.`);
-      carregar();
-    } catch (err) {
-      if ((err as { code?: string }).code === "23503") {
-        toast.error(
-          "Não é possível excluir: este publicador tem histórico de designações ou saídas no calendário.",
-        );
-      } else {
-        toast.error("Não foi possível excluir o publicador. Tente novamente.");
       }
     }
   }
@@ -241,99 +200,6 @@ export function Gestao() {
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      <section className="grid gap-4">
-        <h2 className="text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-ink-soft">
-          Publicadores
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          <Input
-            className="flex-1 basis-40"
-            placeholder="Nome*"
-            value={novoNome}
-            onChange={(e) => setNovoNome(e.target.value)}
-          />
-          <Input
-            className="flex-1 basis-40"
-            placeholder="Telefone"
-            value={novoTel}
-            onChange={(e) => setNovoTel(e.target.value)}
-          />
-          <Button onClick={addPublicador} disabled={!novoNome}>
-            Adicionar
-          </Button>
-        </div>
-        {publicadores.length === 0 ? (
-          <p className="py-1 text-[0.88rem] text-ink-soft">
-            Nenhum publicador cadastrado.
-          </p>
-        ) : (
-          <ul className="flex flex-wrap gap-2">
-            {publicadores.map((p) => {
-              const n = contagemPub[p.id] ?? 0;
-              return (
-                <li
-                  key={p.id}
-                  className="inline-flex items-center gap-2 rounded-full border border-line bg-white py-1.5 pl-3.25 pr-1.75 text-[0.88rem]"
-                >
-                  <span className="inline-flex items-baseline gap-2">
-                    {p.nome}
-                    {p.telefone && (
-                      <span className="font-mono text-[0.78rem] tabular-nums text-ink-soft">
-                        {formatTelefone(p.telefone)}
-                      </span>
-                    )}
-                  </span>
-                  {n > 0 ? (
-                    <span
-                      title={`${n} ${n === 1 ? "território designado" : "territórios designados"} no momento — devolva antes de excluir`}
-                      className="inline-flex items-center gap-1 rounded-full bg-mist px-2 py-0.5 text-[0.72rem] font-medium tabular-nums text-ink-soft"
-                    >
-                      <MapPin className="size-3 flex-none" aria-hidden="true" />
-                      {n}
-                      <span className="sr-only">
-                        {n === 1 ? "território designado" : "territórios designados"}{" "}
-                        no momento, devolva antes de excluir
-                      </span>
-                    </span>
-                  ) : (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label={`Excluir ${p.nome}`}
-                          className="grid size-5 flex-none place-items-center rounded-full text-ink-faint transition-colors hover:bg-danger/10 hover:text-destructive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-destructive"
-                        >
-                          <X className="size-3.5" aria-hidden="true" />
-                        </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Excluir o publicador {p.nome}?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            variant="destructive"
-                            onClick={() => excluirPub(p)}
-                          >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
                 </li>
               );
             })}
