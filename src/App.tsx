@@ -6,6 +6,7 @@ import { Cadastro } from "./screens/Cadastro";
 import { Campo } from "./screens/Campo";
 import { Mapa } from "./screens/Mapa";
 import { Calendario } from "./screens/Calendario";
+import { Publicadores } from "./screens/Publicadores";
 import { LocatorSeal } from "./components/LocatorSeal";
 import { AppShell } from "./components/AppShell";
 
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="/" element={<Gestao />} />
         <Route path="/mapa" element={<Mapa />} />
         <Route path="/calendario" element={<Calendario />} />
+        <Route path="/publicadores" element={<Publicadores />} />
       </Route>
       <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/cadastro/:id" element={<Cadastro />} />

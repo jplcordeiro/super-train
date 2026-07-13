@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { CalendarDays, LogOut, Map } from "lucide-react";
+import { CalendarDays, LogOut, Map, Users } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ const AREAS = [
   { to: "/", rotulo: "Territórios", Icone: HexIcon },
   { to: "/mapa", rotulo: "Mapa", Icone: Map },
   { to: "/calendario", rotulo: "Calendário", Icone: CalendarDays },
+  { to: "/publicadores", rotulo: "Publicadores", Icone: Users },
 ];
 
 export function AppShell() {
