@@ -45,7 +45,7 @@ Decisões do brainstorming:
 
 ### 3. Dados
 
-Nenhuma mudança em `src/lib/` nem no schema. A tela carrega em paralelo:
+Nenhuma consulta nova e nenhuma mudança de schema. A tela carrega em paralelo:
 
 - `listPublicadores()`
 - `listTerritorios()` — só para traduzir `territorio_id` → número
@@ -54,6 +54,9 @@ Nenhuma mudança em `src/lib/` nem no schema. A tela carrega em paralelo:
 
 O agrupamento das saídas por dirigente é uma **função pura** exportada da tela,
 `saidasPorDirigente(saidas)`, com teste unitário próprio (sem rede).
+
+A constante `MES_NOME`, hoje local do `Calendario.tsx`, passa para `src/lib/saidas.ts`
+— é o vocabulário do calendário, e as duas telas agora precisam dele.
 
 ### 4. Limpeza na Gestão
 
