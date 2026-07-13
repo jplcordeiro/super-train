@@ -14,27 +14,53 @@ export function statusTerritorio(
 
 export type Bounds = [[number, number], [number, number]];
 
-export type Quadra = GeoJSON.Position[][];
+export interface Quadra {
+  id: string;
+  coordinates: GeoJSON.Position[][];
+}
 
 export function quadrasDe(limites: Limites | null): Quadra[] {
   if (!limites) return [];
-  return limites.type === "MultiPolygon" ? limites.coordinates : [limites.coordinates];
+  if (limites.type === "FeatureCollection") {
+    return limites.features.map((f, i) => ({
+      id: String(f.properties?.id ?? f.id ?? i),
+      coordinates: f.geometry.coordinates,
+    }));
+  }
+  const quadras =
+    limites.type === "MultiPolygon" ? limites.coordinates : [limites.coordinates];
+  return quadras.map((coordinates, i) => ({ id: String(i), coordinates }));
 }
 
-export function multiPolygonDe(features: GeoJSON.Feature[]): GeoJSON.MultiPolygon | null {
-  const coordinates = features
-    .filter((f) => f.geometry?.type === "Polygon")
-    .map((f) => (f.geometry as GeoJSON.Polygon).coordinates);
-  return coordinates.length > 0 ? { type: "MultiPolygon", coordinates } : null;
+export function limitesDe(
+  features: GeoJSON.Feature[],
+): GeoJSON.FeatureCollection<GeoJSON.Polygon> | null {
+  const poligonos = features.filter((f) => f.geometry?.type === "Polygon");
+  if (poligonos.length === 0) return null;
+  return {
+    type: "FeatureCollection",
+    features: poligonos.map((f) => ({
+      type: "Feature",
+      properties: { id: String(f.properties?.id ?? f.id ?? crypto.randomUUID()) },
+      geometry: f.geometry as GeoJSON.Polygon,
+    })),
+  };
+}
+
+export function geometriaDe(limites: Limites | null): GeoJSON.MultiPolygon | null {
+  const quadras = quadrasDe(limites);
+  if (quadras.length === 0) return null;
+  return { type: "MultiPolygon", coordinates: quadras.map((q) => q.coordinates) };
 }
 
 export function featureCollectionDe(limites: Limites | null): GeoJSON.FeatureCollection {
   return {
     type: "FeatureCollection",
-    features: quadrasDe(limites).map((coordinates) => ({
+    features: quadrasDe(limites).map((q) => ({
       type: "Feature",
-      properties: {},
-      geometry: { type: "Polygon", coordinates },
+      id: q.id,
+      properties: { id: q.id },
+      geometry: { type: "Polygon", coordinates: q.coordinates },
     })),
   };
 }
@@ -46,7 +72,7 @@ export function boundsDeTerritorios(territorios: Territorio[]): Bounds | null {
     maxLat = -Infinity;
   for (const t of territorios) {
     for (const quadra of quadrasDe(t.limites)) {
-      for (const anel of quadra) {
+      for (const anel of quadra.coordinates) {
         for (const [lng, lat] of anel) {
           if (lng < minLng) minLng = lng;
           if (lat < minLat) minLat = lat;
@@ -75,7 +101,7 @@ export async function listTerritorios(): Promise<Territorio[]> {
 export async function criarTerritorio(input: {
   numero: string;
   nome?: string;
-  limites: GeoJSON.MultiPolygon;
+  limites: GeoJSON.FeatureCollection<GeoJSON.Polygon>;
 }): Promise<Territorio> {
   const { data, error } = await supabase
     .from("territorio")
@@ -88,7 +114,11 @@ export async function criarTerritorio(input: {
 
 export async function atualizarTerritorio(
   id: string,
-  input: { numero: string; nome?: string; limites: GeoJSON.MultiPolygon },
+  input: {
+    numero: string;
+    nome?: string;
+    limites: GeoJSON.FeatureCollection<GeoJSON.Polygon>;
+  },
 ): Promise<void> {
   const { error } = await supabase
     .from("territorio")

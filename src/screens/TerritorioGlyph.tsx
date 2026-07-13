@@ -3,7 +3,7 @@ import type { Limites } from "../lib/types";
 
 export function TerritorioGlyph({ limites }: { limites: Limites | null }) {
   const aneis = quadrasDe(limites)
-    .map((quadra) => quadra[0])
+    .map((quadra) => quadra.coordinates[0])
     .filter((anel): anel is GeoJSON.Position[] => !!anel && anel.length >= 3);
 
   if (aneis.length === 0) {

@@ -11,10 +11,9 @@ import {
   criarTerritorio,
   atualizarTerritorio,
   listTerritorios,
-  multiPolygonDe,
+  limitesDe,
   featureCollectionDe,
   boundsDeTerritorios,
-  quadrasDe,
 } from "../lib/territorios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,12 +34,12 @@ export function DrawControl({
   onChange,
 }: {
   desenhoInicial: GeoJSON.FeatureCollection | null;
-  onChange: (quadras: GeoJSON.MultiPolygon | null) => void;
+  onChange: (quadras: Quadras | null) => void;
 }) {
   const draw = useRef<MapboxDraw | null>(null);
   const { current: map } = useMap();
   const atualizar = () =>
-    onChange(multiPolygonDe(draw.current?.getAll().features ?? []));
+    onChange(limitesDe(draw.current?.getAll().features ?? []));
 
   draw.current = useControl<MapboxDraw>(
     () =>
@@ -76,11 +75,14 @@ export function DrawControl({
   return null;
 }
 
-const estadoDe = (
-  numero: string,
-  nome: string,
-  quadras: GeoJSON.MultiPolygon | null,
-) => JSON.stringify([numero.trim(), nome.trim(), quadras?.coordinates ?? null]);
+type Quadras = GeoJSON.FeatureCollection<GeoJSON.Polygon>;
+
+const estadoDe = (numero: string, nome: string, quadras: Quadras | null) =>
+  JSON.stringify([
+    numero.trim(),
+    nome.trim(),
+    quadras?.features.map((f) => f.geometry.coordinates) ?? null,
+  ]);
 
 const VAZIO = estadoDe("", "", null);
 
@@ -89,7 +91,7 @@ export function Cadastro() {
   const navigate = useNavigate();
   const [numero, setNumero] = useState("");
   const [nome, setNome] = useState("");
-  const [quadras, setQuadras] = useState<GeoJSON.MultiPolygon | null>(null);
+  const [quadras, setQuadras] = useState<Quadras | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [inicial, setInicial] = useState<ViewState | undefined>(undefined);
   const [enquadramento, setEnquadramento] = useState<Bounds | undefined>(undefined);
@@ -98,7 +100,7 @@ export function Cadastro() {
   const [mapaPronto, setMapaPronto] = useState(false);
   const [salvo, setSalvo] = useState(VAZIO);
   const saindoAposSalvar = useRef(false);
-  const onChange = useCallback((q: GeoJSON.MultiPolygon | null) => setQuadras(q), []);
+  const onChange = useCallback((q: Quadras | null) => setQuadras(q), []);
 
   const alterado = estadoDe(numero, nome, quadras) !== salvo;
   const bloqueio = useBlocker(
@@ -118,14 +120,13 @@ export function Cadastro() {
             navigate("/");
             return;
           }
-          const limites: GeoJSON.MultiPolygon | null = t.limites
-            ? { type: "MultiPolygon", coordinates: quadrasDe(t.limites) }
-            : null;
+          const desenho = featureCollectionDe(t.limites);
+          const limites = limitesDe(desenho.features);
           setNumero(t.numero);
           setNome(t.nome ?? "");
           setQuadras(limites);
           setSalvo(estadoDe(t.numero, t.nome ?? "", limites));
-          setDesenhoInicial(featureCollectionDe(t.limites));
+          setDesenhoInicial(desenho);
           setEnquadramento(boundsDeTerritorios([t]) ?? undefined);
           setMapaPronto(true);
         })
@@ -187,7 +188,7 @@ export function Cadastro() {
     }
   }
 
-  const total = quadras?.coordinates.length ?? 0;
+  const total = quadras?.features.length ?? 0;
   const rotuloQuadras =
     total === 0
       ? "Desenhe as quadras do território no mapa"

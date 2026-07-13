@@ -60,6 +60,7 @@ vi.mock("react-map-gl/mapbox", () => ({
 
 const quadra: GeoJSON.Feature = {
   type: "Feature",
+  id: "quadra-do-draw",
   properties: {},
   geometry: {
     type: "Polygon",
@@ -91,8 +92,14 @@ describe("DrawControl", () => {
     mapa.emitir("draw.create");
 
     expect(onChange).toHaveBeenCalledWith({
-      type: "MultiPolygon",
-      coordinates: [(quadra.geometry as GeoJSON.Polygon).coordinates],
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: { id: "quadra-do-draw" },
+          geometry: quadra.geometry,
+        },
+      ],
     });
   });
 });

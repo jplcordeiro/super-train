@@ -45,6 +45,7 @@ vi.mock("../lib/territorios", async (importOriginal) => ({
         ],
       },
       ativo: true,
+      progresso_desde: null,
       created_at: "",
     },
   ]),

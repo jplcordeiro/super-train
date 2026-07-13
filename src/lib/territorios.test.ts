@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { statusTerritorio, boundsDeTerritorios, quadrasDe, multiPolygonDe, featureCollectionDe } from "./territorios";
+import {
+  statusTerritorio,
+  boundsDeTerritorios,
+  quadrasDe,
+  limitesDe,
+  featureCollectionDe,
+} from "./territorios";
 import type { Territorio, Designacao } from "./types";
 
 function quadrado(lng: number, lat: number, lado = 1): GeoJSON.Polygon {
@@ -24,12 +30,26 @@ function multi(...quadrados: GeoJSON.Polygon[]): GeoJSON.MultiPolygon {
   };
 }
 
+function colecao(
+  ...quadras: [string, GeoJSON.Polygon][]
+): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
+  return {
+    type: "FeatureCollection",
+    features: quadras.map(([id, geometry]) => ({
+      type: "Feature",
+      properties: { id },
+      geometry,
+    })),
+  };
+}
+
 const base: Territorio = {
   id: "t1",
   numero: "12",
   nome: null,
   limites: null,
   ativo: true,
+  progresso_desde: null,
   created_at: "",
 };
 
@@ -58,15 +78,27 @@ describe("quadrasDe", () => {
     expect(quadrasDe(null)).toEqual([]);
   });
 
-  it("trata um Polygon como um território de uma quadra só", () => {
-    const p = quadrado(-46, -23);
-    expect(quadrasDe(p)).toEqual([p.coordinates]);
-  });
-
-  it("devolve uma entrada por quadra de um MultiPolygon", () => {
+  it("preserva o id de cada quadra de uma FeatureCollection", () => {
     const a = quadrado(-46, -23);
     const b = quadrado(-44, -21);
-    expect(quadrasDe(multi(a, b))).toEqual([a.coordinates, b.coordinates]);
+    expect(quadrasDe(colecao(["qa", a], ["qb", b]))).toEqual([
+      { id: "qa", coordinates: a.coordinates },
+      { id: "qb", coordinates: b.coordinates },
+    ]);
+  });
+
+  it("dá id por índice às quadras de um MultiPolygon legado", () => {
+    const a = quadrado(-46, -23);
+    const b = quadrado(-44, -21);
+    expect(quadrasDe(multi(a, b))).toEqual([
+      { id: "0", coordinates: a.coordinates },
+      { id: "1", coordinates: b.coordinates },
+    ]);
+  });
+
+  it("trata um Polygon legado como um território de uma quadra só", () => {
+    const p = quadrado(-46, -23);
+    expect(quadrasDe(p)).toEqual([{ id: "0", coordinates: p.coordinates }]);
   });
 });
 
@@ -113,32 +145,43 @@ describe("boundsDeTerritorios", () => {
       [-37, -15],
     ]);
   });
+
+  it("envolve todas as quadras de uma FeatureCollection", () => {
+    const t = {
+      ...base,
+      limites: colecao(["qa", quadrado(-46, -23)], ["qb", quadrado(-44, -21)]),
+    };
+    expect(boundsDeTerritorios([t])).toEqual([
+      [-46, -23],
+      [-43, -20],
+    ]);
+  });
 });
 
-function feature(p: GeoJSON.Polygon): GeoJSON.Feature {
-  return { type: "Feature", properties: {}, geometry: p };
+function feature(p: GeoJSON.Polygon, id?: string): GeoJSON.Feature {
+  return { type: "Feature", id, properties: {}, geometry: p };
 }
 
-describe("multiPolygonDe", () => {
+describe("limitesDe", () => {
   it("é null quando não há nenhuma quadra desenhada", () => {
-    expect(multiPolygonDe([])).toBeNull();
+    expect(limitesDe([])).toBeNull();
   });
 
-  it("junta todas as quadras desenhadas num MultiPolygon", () => {
+  it("mantém o id que o draw deu a cada quadra", () => {
     const a = quadrado(-46, -23);
     const b = quadrado(-44, -21);
-    expect(multiPolygonDe([feature(a), feature(b)])).toEqual({
-      type: "MultiPolygon",
-      coordinates: [a.coordinates, b.coordinates],
-    });
+    const limites = limitesDe([feature(a, "draw-1"), feature(b, "draw-2")]);
+    expect(limites?.features.map((f) => f.properties?.id)).toEqual([
+      "draw-1",
+      "draw-2",
+    ]);
+    expect(limites?.features[0].geometry).toEqual(a);
   });
 
-  it("salva uma quadra só também como MultiPolygon", () => {
-    const a = quadrado(-46, -23);
-    expect(multiPolygonDe([feature(a)])).toEqual({
-      type: "MultiPolygon",
-      coordinates: [a.coordinates],
-    });
+  it("dá um id novo à quadra que ainda não tem", () => {
+    const limites = limitesDe([feature(quadrado(-46, -23))]);
+    expect(limites?.features[0].properties?.id).toEqual(expect.any(String));
+    expect(limites?.features[0].properties?.id).not.toBe("");
   });
 
   it("ignora features que não são polígonos", () => {
@@ -147,7 +190,7 @@ describe("multiPolygonDe", () => {
       properties: {},
       geometry: { type: "Point", coordinates: [-46, -23] },
     };
-    expect(multiPolygonDe([ponto])).toBeNull();
+    expect(limitesDe([ponto])).toBeNull();
   });
 });
 
@@ -162,10 +205,7 @@ describe("featureCollectionDe", () => {
   it("devolve uma feature de polígono por quadra, pronta para o draw", () => {
     const a = quadrado(-46, -23);
     const b = quadrado(-44, -21);
-    const fc = featureCollectionDe({
-      type: "MultiPolygon",
-      coordinates: [a.coordinates, b.coordinates],
-    });
+    const fc = featureCollectionDe(multi(a, b));
     expect(fc.features).toHaveLength(2);
     expect(fc.features[0].geometry).toEqual(a);
     expect(fc.features[1].geometry).toEqual(b);
@@ -174,5 +214,11 @@ describe("featureCollectionDe", () => {
   it("aceita um Polygon antigo e devolve uma feature só", () => {
     const a = quadrado(-46, -23);
     expect(featureCollectionDe(a).features).toHaveLength(1);
+  });
+
+  it("leva o id da quadra para a feature, para o draw e o mapa o preservarem", () => {
+    const fc = featureCollectionDe(colecao(["qa", quadrado(-46, -23)]));
+    expect(fc.features[0].id).toBe("qa");
+    expect(fc.features[0].properties?.id).toBe("qa");
   });
 });

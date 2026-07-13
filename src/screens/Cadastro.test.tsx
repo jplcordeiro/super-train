@@ -24,25 +24,40 @@ function renderCadastro(rota = "/cadastro") {
   return router;
 }
 
-const limites: GeoJSON.MultiPolygon = {
-  type: "MultiPolygon",
-  coordinates: [
-    [
-      [
-        [-46, -23],
-        [-45, -23],
-        [-45, -22],
-        [-46, -22],
-        [-46, -23],
-      ],
-    ],
+const limites: GeoJSON.FeatureCollection<GeoJSON.Polygon> = {
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      properties: { id: "quadra-a" },
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-46, -23],
+            [-45, -23],
+            [-45, -22],
+            [-46, -22],
+            [-46, -23],
+          ],
+        ],
+      },
+    },
   ],
 };
 
 async function renderEdicao() {
   const { listTerritorios } = await import("../lib/territorios");
   vi.mocked(listTerritorios).mockResolvedValue([
-    { id: "t1", numero: "12", nome: "Centro", limites, ativo: true, created_at: "" },
+    {
+      id: "t1",
+      numero: "12",
+      nome: "Centro",
+      limites,
+      ativo: true,
+      progresso_desde: null,
+      created_at: "",
+    },
   ]);
   renderCadastro("/cadastro/t1");
   await screen.findByDisplayValue("12");
