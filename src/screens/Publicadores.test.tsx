@@ -17,8 +17,8 @@ vi.mock("../lib/territorios", async (orig) => {
   return {
     ...actual,
     listTerritorios: vi.fn().mockResolvedValue([
-      { id: "t1", numero: "6", nome: null, limites: null, ativo: true, created_at: "" },
-      { id: "t2", numero: "12", nome: null, limites: null, ativo: true, created_at: "" },
+      { id: "t1", numero: "6", nome: null, limites: null, ativo: true, progresso_desde: null, created_at: "" },
+      { id: "t2", numero: "12", nome: null, limites: null, ativo: true, progresso_desde: null, created_at: "" },
     ]),
   };
 });

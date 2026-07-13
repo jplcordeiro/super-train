@@ -4,6 +4,7 @@ import { Login } from "./auth/Login";
 import { Gestao } from "./screens/Gestao";
 import { Cadastro } from "./screens/Cadastro";
 import { Campo } from "./screens/Campo";
+import { MarcarQuadras } from "./screens/MarcarQuadras";
 import { Mapa } from "./screens/Mapa";
 import { Calendario } from "./screens/Calendario";
 import { Publicadores } from "./screens/Publicadores";
@@ -45,6 +46,10 @@ export default function App() {
       <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/cadastro/:id" element={<Cadastro />} />
       <Route path="/campo/:id" element={<Campo />} />
+      <Route
+        path="/saida/:saidaId/territorio/:territorioId"
+        element={<MarcarQuadras />}
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

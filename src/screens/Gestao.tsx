@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listTerritorios, excluirTerritorio } from "../lib/territorios";
+import {
+  iniciarNovaRodada,
+  listMarcas,
+  progressoDe,
+  quadrasFeitasDe,
+  type Marca,
+} from "../lib/quadras";
 import { listPublicadores } from "../lib/publicadores";
 import { designacoesAbertas, devolver } from "../lib/designacoes";
 import type { Territorio, Publicador, Designacao } from "../lib/types";
@@ -29,17 +36,21 @@ export function Gestao() {
   const [territorios, setTerritorios] = useState<Territorio[]>([]);
   const [publicadores, setPublicadores] = useState<Publicador[]>([]);
   const [abertas, setAbertas] = useState<Designacao[]>([]);
+  const [marcas, setMarcas] = useState<Marca[]>([]);
+  const [ofertaRodada, setOfertaRodada] = useState<Territorio | null>(null);
   const [carregando, setCarregando] = useState(true);
 
   async function carregar() {
-    const [t, p, d] = await Promise.all([
+    const [t, p, d, m] = await Promise.all([
       listTerritorios(),
       listPublicadores(),
       designacoesAbertas(),
+      listMarcas(),
     ]);
     setTerritorios(t);
     setPublicadores(p);
     setAbertas(d);
+    setMarcas(m);
   }
   useEffect(() => {
     carregar().finally(() => setCarregando(false));
@@ -48,6 +59,17 @@ export function Gestao() {
   const abertaDe = (tid: string) => abertas.find((d) => d.territorio_id === tid);
   const nomePub = (pid: string) =>
     publicadores.find((p) => p.id === pid)?.nome ?? "?";
+
+  async function novaRodada(t: Territorio) {
+    setOfertaRodada(null);
+    try {
+      await iniciarNovaRodada(t.id);
+      toast.success(`Território Nº ${t.numero}: nova rodada começada.`);
+      carregar();
+    } catch {
+      toast.error("Não foi possível começar a nova rodada. Tente novamente.");
+    }
+  }
 
   async function excluir(t: Territorio) {
     try {
@@ -105,6 +127,7 @@ export function Gestao() {
           <ul className="grid grid-cols-1 gap-3 min-[620px]:grid-cols-2">
             {territorios.map((t) => {
               const d = abertaDe(t.id);
+              const progresso = progressoDe(t, marcas);
               return (
                 <li
                   key={t.id}
@@ -117,7 +140,10 @@ export function Gestao() {
                     aria-label={`Abrir mapa do território Nº ${t.numero}`}
                     className="h-11 w-11 flex-none rounded-lg text-jwblue transition-shadow hover:ring-2 hover:ring-jwblue/25"
                   >
-                    <TerritorioGlyph limites={t.limites} />
+                    <TerritorioGlyph
+                      limites={t.limites}
+                      feitas={quadrasFeitasDe(t, marcas)}
+                    />
                   </Link>
 
                   <div className="grid min-w-0 gap-0.5">
@@ -145,6 +171,16 @@ export function Gestao() {
                         · desde {formatData(d.data_saida)}
                       </span>
                     )}
+                    {progresso.total > 0 &&
+                      (progresso.concluido ? (
+                        <span className="rounded-full bg-sage-wash px-2 py-0.5 text-[0.72rem] font-medium text-sage-ink">
+                          Concluído · {progresso.total}/{progresso.total} quadras
+                        </span>
+                      ) : (
+                        <span className="text-[0.76rem] tabular-nums text-ink-soft">
+                          {progresso.feitas}/{progresso.total} quadras
+                        </span>
+                      ))}
                   </div>
 
                   <div className="col-span-full flex flex-wrap items-center gap-2 border-t border-line pt-3">
@@ -155,10 +191,17 @@ export function Gestao() {
                         onClick={async () => {
                           await devolver(d.id);
                           toast.success(`Território Nº ${t.numero} devolvido.`);
-                          carregar();
+                          await carregar();
+                          if (progresso.concluido) setOfertaRodada(t);
                         }}
                       >
                         Devolver
+                      </Button>
+                    )}
+
+                    {progresso.concluido && (
+                      <Button size="sm" onClick={() => novaRodada(t)}>
+                        Começar nova rodada
                       </Button>
                     )}
 
@@ -206,6 +249,31 @@ export function Gestao() {
           </ul>
         )}
       </section>
+
+      <AlertDialog
+        open={ofertaRodada !== null}
+        onOpenChange={(aberto) => !aberto && setOfertaRodada(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Território Nº {ofertaRodada?.numero} concluído. Começar nova rodada?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Todas as quadras foram feitas. Começar uma rodada nova zera a contagem
+              a partir de hoje — as marcas antigas continuam guardadas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Agora não</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => ofertaRodada && novaRodada(ofertaRodada)}
+            >
+              Começar nova rodada
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

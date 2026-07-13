@@ -18,7 +18,8 @@ import {
   salvarNota,
   type Mes,
 } from "../lib/saidas";
-import { listTerritorios } from "../lib/territorios";
+import { listTerritorios, quadrasDe } from "../lib/territorios";
+import { listMarcas, marcasDaRodada, type Marca } from "../lib/quadras";
 import { listPublicadores } from "../lib/publicadores";
 import type { Publicador, Saida, Territorio } from "../lib/types";
 import { TerritorioGlyph } from "./TerritorioGlyph";
@@ -73,6 +74,7 @@ export function Calendario() {
   const [saidas, setSaidas] = useState<Saida[]>([]);
   const [territorios, setTerritorios] = useState<Territorio[]>([]);
   const [publicadores, setPublicadores] = useState<Publicador[]>([]);
+  const [marcas, setMarcas] = useState<Marca[]>([]);
   const [nota, setNota] = useState("");
   const [notaSalva, setNotaSalva] = useState("");
   const [diaAberto, setDiaAberto] = useState<string | null>(null);
@@ -82,17 +84,19 @@ export function Calendario() {
   const grade = gradeDoMes(mes);
 
   async function carregar() {
-    const [s, t, p, n] = await Promise.all([
+    const [s, t, p, n, m] = await Promise.all([
       listSaidas(grade[0], grade[grade.length - 1]),
       listTerritorios(),
       listPublicadores(),
       notaDoMes(mes),
+      listMarcas(),
     ]);
     setSaidas(s);
     setTerritorios(t);
     setPublicadores(p);
     setNota(n);
     setNotaSalva(n);
+    setMarcas(m);
   }
 
   useEffect(() => {
@@ -182,6 +186,40 @@ export function Calendario() {
     );
   }
 
+  function QuadrasDaSaida({ s }: { s: Saida }) {
+    if (s.territorio_ids.length === 0) return null;
+    return (
+      <ul className="grid gap-1 border-t border-line pt-2.5">
+        {s.territorio_ids.map((id) => {
+          const t = territorioDe(id);
+          if (!t) return null;
+          const total = quadrasDe(t.limites).length;
+          const feitas = marcasDaRodada(t, marcas).filter(
+            (m) => m.saida_id === s.id,
+          ).length;
+          return (
+            <li key={id}>
+              <Link
+                to={`/saida/${s.id}/territorio/${t.id}`}
+                className="flex items-center gap-2 rounded-lg px-1.5 py-1.5 text-[0.85rem] text-ink transition-colors hover:bg-mist"
+              >
+                <span className="font-mono font-medium tabular-nums text-jwblue-deep">
+                  Nº {t.numero}
+                </span>
+                <span className="flex-1 truncate text-ink-soft">
+                  {total === 0
+                    ? "sem quadras desenhadas"
+                    : `${feitas} de ${total} quadras marcadas neste dia`}
+                </span>
+                <ChevronRight className="size-4 flex-none text-ink-faint" aria-hidden="true" />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
   function Eyebrow({ s }: { s: Saida }) {
     if (s.periodo === "manha") return null;
     return (
@@ -192,7 +230,7 @@ export function Calendario() {
   }
 
   return (
-    <div className="folha mx-auto grid max-w-300 gap-[clamp(16px,3vw,26px)] px-[clamp(12px,3vw,32px)] pt-[clamp(16px,4vw,36px)] pb-24">
+    <div className="folha mx-auto grid max-w-300 gap-[clamp(16px,3vw,26px)] px-[clamp(12px,3vw,32px)] pt-[clamp(16px,4vw,36px)] pb-6">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-4">
         <div className="nao-imprime flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => window.print()}>
@@ -429,17 +467,19 @@ export function Calendario() {
         </>
       )}
 
-      <Button
-        size="lg"
-        className="nao-imprime fixed bottom-5 left-1/2 z-20 -translate-x-1/2 shadow-card sm:hidden"
-        onClick={() => {
-          setDiaAberto(hoje);
-          setEditando("nova");
-        }}
-      >
-        <Plus aria-hidden="true" />
-        Adicionar saída
-      </Button>
+      <div className="nao-imprime pointer-events-none sticky bottom-4 z-20 flex justify-center sm:hidden">
+        <Button
+          size="lg"
+          className="pointer-events-auto shadow-card"
+          onClick={() => {
+            setDiaAberto(hoje);
+            setEditando("nova");
+          }}
+        >
+          <Plus aria-hidden="true" />
+          Adicionar saída
+        </Button>
+      </div>
 
       <Sheet open={diaAberto !== null} onOpenChange={(v) => !v && fecharDia()}>
         <SheetContent
@@ -508,6 +548,9 @@ export function Calendario() {
                           </div>
                           <Territorios s={s} tamanho="selo" />
                         </div>
+
+                        <QuadrasDaSaida s={s} />
+
                         <div className="flex gap-2 border-t border-line pt-2.5">
                           <Button
                             variant="outline"

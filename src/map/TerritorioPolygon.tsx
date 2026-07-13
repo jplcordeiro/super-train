@@ -1,18 +1,140 @@
-import { Source, Layer } from "react-map-gl/mapbox";
+import { useEffect, useRef, useState } from "react";
+import { Source, Layer, Popup, useMap } from "react-map-gl/mapbox";
+import { featureCollectionDe } from "../lib/territorios";
+import { HistoricoQuadra } from "./HistoricoQuadra";
+import type { PassagemQuadra } from "../lib/quadras";
 import type { Limites } from "../lib/types";
 
-export function TerritorioPolygon({ limites }: { limites: Limites }) {
-  const feature: GeoJSON.Feature = {
-    type: "Feature",
-    geometry: limites,
-    properties: {},
+export type EstadoQuadra = "feita" | "outra" | "falta";
+
+const CORES: Record<EstadoQuadra, { fill: string; opacidade: number }> = {
+  feita: { fill: "#5c8a76", opacidade: 0.42 },
+  outra: { fill: "#5c8a76", opacidade: 0.16 },
+  falta: { fill: "#486492", opacidade: 0.12 },
+};
+
+const porEstado = (
+  chave: "fill" | "opacidade",
+): mapboxgl.ExpressionSpecification => [
+  "match",
+  ["get", "estado"],
+  "feita",
+  CORES.feita[chave],
+  "outra",
+  CORES.outra[chave],
+  CORES.falta[chave],
+];
+
+const FILL_ID = "territorio-fill";
+
+const TEMPO_TOQUE_LONGO = 450;
+
+interface Aberto {
+  quadraId: string;
+  longitude: number;
+  latitude: number;
+}
+
+export function TerritorioPolygon({
+  limites,
+  estados,
+  onQuadraClick,
+  historicoDe,
+}: {
+  limites: Limites;
+  estados?: Record<string, EstadoQuadra>;
+  onQuadraClick?: (quadraId: string) => void;
+  historicoDe?: (quadraId: string) => PassagemQuadra[];
+}) {
+  const { current: map } = useMap();
+  const [aberto, setAberto] = useState<Aberto | null>(null);
+  const toqueLongo = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abriuNoToque = useRef(false);
+  const base = featureCollectionDe(limites);
+  const data: GeoJSON.FeatureCollection = {
+    ...base,
+    features: base.features.map((f) => ({
+      ...f,
+      properties: {
+        ...f.properties,
+        estado: estados?.[String(f.properties?.id)] ?? "falta",
+      },
+    })),
   };
+
+  useEffect(() => {
+    if (!map) return;
+
+    const quadraDe = (e: { features?: GeoJSON.Feature[] }) => {
+      const id = e.features?.[0]?.properties?.id;
+      return typeof id === "string" ? id : null;
+    };
+    const abrir = (quadraId: string, lngLat: mapboxgl.LngLat) => {
+      if (!historicoDe || historicoDe(quadraId).length === 0) return false;
+      setAberto({ quadraId, longitude: lngLat.lng, latitude: lngLat.lat });
+      return true;
+    };
+
+    const clique = (e: mapboxgl.MapLayerMouseEvent) => {
+      if (abriuNoToque.current) {
+        abriuNoToque.current = false;
+        return;
+      }
+      setAberto(null);
+      const id = quadraDe(e);
+      if (id && onQuadraClick) onQuadraClick(id);
+    };
+
+    const mover = (e: mapboxgl.MapLayerMouseEvent) => {
+      map.getCanvas().style.cursor = onQuadraClick ? "pointer" : "";
+      const id = quadraDe(e);
+      if (id) abrir(id, e.lngLat);
+    };
+    const sair = () => {
+      map.getCanvas().style.cursor = "";
+      setAberto(null);
+    };
+
+    const cancelarToque = () => {
+      if (toqueLongo.current) clearTimeout(toqueLongo.current);
+      toqueLongo.current = null;
+    };
+    const tocar = (e: mapboxgl.MapLayerTouchEvent) => {
+      const id = quadraDe(e);
+      if (!id) return;
+      cancelarToque();
+      toqueLongo.current = setTimeout(() => {
+        abriuNoToque.current = abrir(id, e.lngLat);
+      }, TEMPO_TOQUE_LONGO);
+    };
+
+    const comHover = window.matchMedia?.("(hover: hover)").matches ?? true;
+
+    map.on("click", FILL_ID, clique);
+    if (comHover) {
+      map.on("mousemove", FILL_ID, mover);
+      map.on("mouseleave", FILL_ID, sair);
+    }
+    map.on("touchstart", FILL_ID, tocar);
+    map.on("touchend", cancelarToque);
+    map.on("touchmove", cancelarToque);
+    return () => {
+      cancelarToque();
+      map.off("click", FILL_ID, clique);
+      map.off("mousemove", FILL_ID, mover);
+      map.off("mouseleave", FILL_ID, sair);
+      map.off("touchstart", FILL_ID, tocar);
+      map.off("touchend", cancelarToque);
+      map.off("touchmove", cancelarToque);
+    };
+  }, [map, onQuadraClick, historicoDe]);
+
   return (
-    <Source id="territorio" type="geojson" data={feature}>
+    <Source id="territorio" type="geojson" data={data}>
       <Layer
-        id="territorio-fill"
+        id={FILL_ID}
         type="fill"
-        paint={{ "fill-color": "#486492", "fill-opacity": 0.12 }}
+        paint={{ "fill-color": porEstado("fill"), "fill-opacity": porEstado("opacidade") }}
       />
       {/* casing branco por baixo: faz o limite "saltar" sobre qualquer fundo de
           mapa sob luz forte, e o separa do azul do ponto "você está aqui". */}
@@ -28,6 +150,20 @@ export function TerritorioPolygon({ limites }: { limites: Limites }) {
         layout={{ "line-join": "round" }}
         paint={{ "line-color": "#33507d", "line-width": 3 }}
       />
+
+      {aberto && historicoDe && (
+        <Popup
+          longitude={aberto.longitude}
+          latitude={aberto.latitude}
+          closeButton={false}
+          closeOnClick={false}
+          offset={12}
+          maxWidth="none"
+          onClose={() => setAberto(null)}
+        >
+          <HistoricoQuadra passagens={historicoDe(aberto.quadraId)} />
+        </Popup>
+      )}
     </Source>
   );
 }

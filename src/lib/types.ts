@@ -1,4 +1,7 @@
-export type Limites = GeoJSON.Polygon | GeoJSON.MultiPolygon;
+export type Limites =
+  | GeoJSON.Polygon
+  | GeoJSON.MultiPolygon
+  | GeoJSON.FeatureCollection<GeoJSON.Polygon>;
 
 export interface Territorio {
   id: string;
@@ -6,6 +9,7 @@ export interface Territorio {
   nome: string | null;
   limites: Limites | null;
   ativo: boolean;
+  progresso_desde: string | null;
   created_at: string;
 }
 

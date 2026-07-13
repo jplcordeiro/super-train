@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Source, Layer, useMap } from "react-map-gl/mapbox";
-import type { Territorio, Limites } from "../lib/types";
-import type { StatusTerritorio } from "../lib/territorios";
+import type { Territorio } from "../lib/types";
+import { geometriaDe, type StatusTerritorio } from "../lib/territorios";
 
 const CORES: Record<StatusTerritorio, { fill: string; line: string }> = {
   disponivel: { fill: "#5c8a76", line: "#3f6b58" },
@@ -36,10 +36,11 @@ export function TerritoriosLayer({
   const data: GeoJSON.FeatureCollection = {
     type: "FeatureCollection",
     features: territorios
-      .filter((t) => t.limites)
-      .map((t) => ({
+      .map((t) => ({ t, geometry: geometriaDe(t.limites) }))
+      .filter((x): x is { t: Territorio; geometry: GeoJSON.MultiPolygon } => !!x.geometry)
+      .map(({ t, geometry }) => ({
         type: "Feature",
-        geometry: t.limites as Limites,
+        geometry,
         properties: { id: t.id, numero: t.numero, status: statusDe(t) },
       })),
   };

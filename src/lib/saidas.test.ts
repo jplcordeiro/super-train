@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
+  atualizarSaida,
   dataBR,
   dataISO,
   datasSemanaisAteFimDoMes,
@@ -11,7 +12,64 @@ import {
   mesmoMes,
   saidasDoDia,
 } from "./saidas";
+import type { EntradaSaida } from "./saidas";
 import type { Periodo, Saida } from "./types";
+
+interface Chamada {
+  tabela: string;
+  op: string;
+  valores?: unknown;
+  filtros: Record<string, unknown>;
+}
+
+const chamadas: Chamada[] = [];
+let vinculos: string[] = [];
+
+vi.mock("./supabase", () => {
+  function consulta(tabela: string) {
+    const chamada: Chamada = { tabela, op: "", filtros: {} };
+    const encadeavel = {
+      select: () => ((chamada.op ||= "select"), chamadas.push(chamada), encadeavel),
+      update: (valores: unknown) => (
+        Object.assign(chamada, { op: "update", valores }),
+        chamadas.push(chamada),
+        encadeavel
+      ),
+      insert: (valores: unknown) => (
+        Object.assign(chamada, { op: "insert", valores }),
+        chamadas.push(chamada),
+        encadeavel
+      ),
+      delete: () => ((chamada.op = "delete"), chamadas.push(chamada), encadeavel),
+      eq: (coluna: string, valor: unknown) => (
+        (chamada.filtros[coluna] = valor), encadeavel
+      ),
+      in: (coluna: string, valores: unknown) => (
+        (chamada.filtros[coluna] = valores), encadeavel
+      ),
+      then: (resolver: (r: unknown) => void) =>
+        resolver(
+          chamada.op === "select"
+            ? { data: vinculos.map((territorio_id) => ({ territorio_id })), error: null }
+            : { data: [], error: null },
+        ),
+    };
+    return encadeavel;
+  }
+  return { supabase: { from: (tabela: string) => consulta(tabela) } };
+});
+
+const entrada = (territorio_ids: string[]): EntradaSaida => ({
+  data: "2026-07-12",
+  periodo: "manha",
+  local: "Gruta da Ilha",
+  publicador_id: "p1",
+  observacao: null,
+  territorio_ids,
+});
+
+const feitas = (tabela: string, op: string) =>
+  chamadas.filter((c) => c.tabela === tabela && c.op === op);
 
 function saida(p: Partial<Saida> & { id: string }): Saida {
   return {
@@ -25,6 +83,40 @@ function saida(p: Partial<Saida> & { id: string }): Saida {
     ...p,
   };
 }
+
+describe("atualizarSaida", () => {
+  beforeEach(() => {
+    chamadas.length = 0;
+    vinculos = [];
+  });
+
+  it("não desvincula um território que continua na saída", async () => {
+    vinculos = ["t1"];
+    await atualizarSaida("s1", entrada(["t1"]));
+
+    expect(feitas("saida_territorio", "delete")).toHaveLength(0);
+    expect(feitas("saida_territorio", "insert")).toHaveLength(0);
+  });
+
+  it("desvincula só o território que saiu", async () => {
+    vinculos = ["t1", "t2"];
+    await atualizarSaida("s1", entrada(["t1"]));
+
+    const remocoes = feitas("saida_territorio", "delete");
+    expect(remocoes).toHaveLength(1);
+    expect(remocoes[0].filtros).toEqual({ saida_id: "s1", territorio_id: ["t2"] });
+  });
+
+  it("vincula só o território que entrou", async () => {
+    vinculos = ["t1"];
+    await atualizarSaida("s1", entrada(["t1", "t2"]));
+
+    expect(feitas("saida_territorio", "delete")).toHaveLength(0);
+    expect(feitas("saida_territorio", "insert")[0].valores).toEqual([
+      { saida_id: "s1", territorio_id: "t2" },
+    ]);
+  });
+});
 
 describe("gradeDoMes", () => {
   it("cobre semanas inteiras, de domingo a sábado", () => {

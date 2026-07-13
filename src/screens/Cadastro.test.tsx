@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Cadastro } from "./Cadastro";
 
 vi.mock("../map/BaseMap", () => ({ BaseMap: () => <div data-testid="map" /> }));
@@ -9,6 +9,10 @@ vi.mock("../lib/territorios", async (importOriginal) => ({
   criarTerritorio: vi.fn(),
   atualizarTerritorio: vi.fn(),
   listTerritorios: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("../lib/quadras", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/quadras")>()),
+  listMarcas: vi.fn().mockResolvedValue([]),
 }));
 
 function renderCadastro(rota = "/cadastro") {
@@ -24,31 +28,63 @@ function renderCadastro(rota = "/cadastro") {
   return router;
 }
 
-const limites: GeoJSON.MultiPolygon = {
-  type: "MultiPolygon",
-  coordinates: [
-    [
-      [
-        [-46, -23],
-        [-45, -23],
-        [-45, -22],
-        [-46, -22],
-        [-46, -23],
-      ],
-    ],
+const limites: GeoJSON.FeatureCollection<GeoJSON.Polygon> = {
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      properties: { id: "quadra-a" },
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-46, -23],
+            [-45, -23],
+            [-45, -22],
+            [-46, -22],
+            [-46, -23],
+          ],
+        ],
+      },
+    },
   ],
 };
 
-async function renderEdicao() {
+async function renderEdicao(comQuadraMarcada = false) {
   const { listTerritorios } = await import("../lib/territorios");
+  const { listMarcas } = await import("../lib/quadras");
   vi.mocked(listTerritorios).mockResolvedValue([
-    { id: "t1", numero: "12", nome: "Centro", limites, ativo: true, created_at: "" },
+    {
+      id: "t1",
+      numero: "12",
+      nome: "Centro",
+      limites,
+      ativo: true,
+      progresso_desde: null,
+      created_at: "",
+    },
   ]);
+  vi.mocked(listMarcas).mockResolvedValue(
+    comQuadraMarcada
+      ? [
+          {
+            saida_id: "s1",
+            territorio_id: "t1",
+            quadra_id: "quadra-a",
+            data: "2026-07-12",
+            local: null,
+            publicador_id: null,
+          },
+        ]
+      : [],
+  );
   renderCadastro("/cadastro/t1");
   await screen.findByDisplayValue("12");
 }
 
 describe("Cadastro", () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it("desabilita salvar sem número e sem quadra", () => {
     renderCadastro();
     expect(screen.getByRole("button", { name: /salvar/i })).toBeDisabled();
@@ -74,6 +110,44 @@ describe("Cadastro", () => {
         limites,
       }),
     );
+  });
+
+  it("avisa antes de salvar um território com quadras marcadas na rodada", async () => {
+    const { atualizarTerritorio } = await import("../lib/territorios");
+    await renderEdicao(true);
+
+    fireEvent.click(await screen.findByRole("button", { name: /salvar alterações/i }));
+
+    expect(
+      await screen.findByText(/rodada em andamento\?/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/1 quadra marcada/i)).toBeInTheDocument();
+    expect(atualizarTerritorio).not.toHaveBeenCalled();
+  });
+
+  it("salva depois de o usuário confirmar o aviso da rodada", async () => {
+    const { atualizarTerritorio } = await import("../lib/territorios");
+    await renderEdicao(true);
+
+    fireEvent.click(await screen.findByRole("button", { name: /salvar alterações/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^salvar alterações$/i }),
+    );
+
+    await waitFor(() => expect(atualizarTerritorio).toHaveBeenCalled());
+  });
+
+  it("não salva quando o usuário volta a editar", async () => {
+    const { atualizarTerritorio } = await import("../lib/territorios");
+    await renderEdicao(true);
+
+    fireEvent.click(await screen.findByRole("button", { name: /salvar alterações/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /continuar editando/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByText(/rodada em andamento\?/i)).not.toBeInTheDocument(),
+    );
+    expect(atualizarTerritorio).not.toHaveBeenCalled();
   });
 
   it("sai direto quando nada foi alterado", async () => {

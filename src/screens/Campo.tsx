@@ -2,21 +2,30 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { BaseMap } from "../map/BaseMap";
-import { TerritorioPolygon } from "../map/TerritorioPolygon";
+import { TerritorioPolygon, type EstadoQuadra } from "../map/TerritorioPolygon";
 import { listTerritorios, boundsDeTerritorios } from "../lib/territorios";
-import type { Territorio } from "../lib/types";
+import { historicoDaQuadra, listMarcas, quadrasFeitasDe } from "../lib/quadras";
+import type { Marca } from "../lib/quadras";
+import { listPublicadores } from "../lib/publicadores";
+import type { Publicador, Territorio } from "../lib/types";
 import { Button } from "@/components/ui/button";
 import { RadarLoader } from "../components/RadarLoader";
 
 export function Campo() {
   const { id } = useParams();
   const [t, setT] = useState<Territorio | null>(null);
+  const [marcas, setMarcas] = useState<Marca[]>([]);
+  const [publicadores, setPublicadores] = useState<Publicador[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     setCarregando(true);
-    listTerritorios()
-      .then((all) => setT(all.find((x) => x.id === id) ?? null))
+    Promise.all([listTerritorios(), listMarcas(), listPublicadores()])
+      .then(([todos, marcadas, pubs]) => {
+        setT(todos.find((x) => x.id === id) ?? null);
+        setMarcas(marcadas);
+        setPublicadores(pubs);
+      })
       .finally(() => setCarregando(false));
   }, [id]);
 
@@ -55,11 +64,21 @@ export function Campo() {
     );
 
   const bounds = boundsDeTerritorios([t]);
+  const estados: Record<string, EstadoQuadra> = {};
+  for (const quadraId of quadrasFeitasDe(t, marcas)) estados[quadraId] = "feita";
 
   return (
     <div className="relative h-dvh w-full overflow-hidden">
       <BaseMap showLocation bounds={bounds ?? undefined}>
-        {t.limites && <TerritorioPolygon limites={t.limites} />}
+        {t.limites && (
+          <TerritorioPolygon
+            limites={t.limites}
+            estados={estados}
+            historicoDe={(quadraId) =>
+              historicoDaQuadra(t.id, quadraId, marcas, publicadores)
+            }
+          />
+        )}
       </BaseMap>
 
       <Link

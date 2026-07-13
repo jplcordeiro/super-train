@@ -46,7 +46,7 @@ vi.mock("../lib/territorios", async (orig) => {
   return {
     ...actual,
     listTerritorios: vi.fn().mockResolvedValue([
-      { id: "t1", numero: "6", nome: "Centro", limites: null, ativo: true, created_at: "" },
+      { id: "t1", numero: "6", nome: "Centro", limites: null, ativo: true, progresso_desde: null, created_at: "" },
     ]),
   };
 });
@@ -55,6 +55,10 @@ vi.mock("../lib/publicadores", () => ({
     .fn()
     .mockResolvedValue([{ id: "p1", nome: "Kleber", telefone: null, created_at: "" }]),
 }));
+vi.mock("../lib/quadras", async (orig) => {
+  const actual = await (orig() as Promise<Record<string, unknown>>);
+  return { ...actual, listMarcas: vi.fn().mockResolvedValue([]) };
+});
 
 function montar() {
   return render(

@@ -11,11 +11,11 @@ import {
   criarTerritorio,
   atualizarTerritorio,
   listTerritorios,
-  multiPolygonDe,
+  limitesDe,
   featureCollectionDe,
   boundsDeTerritorios,
-  quadrasDe,
 } from "../lib/territorios";
+import { listMarcas, progressoDe } from "../lib/quadras";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,12 +35,12 @@ export function DrawControl({
   onChange,
 }: {
   desenhoInicial: GeoJSON.FeatureCollection | null;
-  onChange: (quadras: GeoJSON.MultiPolygon | null) => void;
+  onChange: (quadras: Quadras | null) => void;
 }) {
   const draw = useRef<MapboxDraw | null>(null);
   const { current: map } = useMap();
   const atualizar = () =>
-    onChange(multiPolygonDe(draw.current?.getAll().features ?? []));
+    onChange(limitesDe(draw.current?.getAll().features ?? []));
 
   draw.current = useControl<MapboxDraw>(
     () =>
@@ -76,11 +76,14 @@ export function DrawControl({
   return null;
 }
 
-const estadoDe = (
-  numero: string,
-  nome: string,
-  quadras: GeoJSON.MultiPolygon | null,
-) => JSON.stringify([numero.trim(), nome.trim(), quadras?.coordinates ?? null]);
+type Quadras = GeoJSON.FeatureCollection<GeoJSON.Polygon>;
+
+const estadoDe = (numero: string, nome: string, quadras: Quadras | null) =>
+  JSON.stringify([
+    numero.trim(),
+    nome.trim(),
+    quadras?.features.map((f) => f.geometry.coordinates) ?? null,
+  ]);
 
 const VAZIO = estadoDe("", "", null);
 
@@ -89,7 +92,7 @@ export function Cadastro() {
   const navigate = useNavigate();
   const [numero, setNumero] = useState("");
   const [nome, setNome] = useState("");
-  const [quadras, setQuadras] = useState<GeoJSON.MultiPolygon | null>(null);
+  const [quadras, setQuadras] = useState<Quadras | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [inicial, setInicial] = useState<ViewState | undefined>(undefined);
   const [enquadramento, setEnquadramento] = useState<Bounds | undefined>(undefined);
@@ -97,8 +100,10 @@ export function Cadastro() {
     useState<GeoJSON.FeatureCollection | null>(null);
   const [mapaPronto, setMapaPronto] = useState(false);
   const [salvo, setSalvo] = useState(VAZIO);
+  const [marcadas, setMarcadas] = useState(0);
+  const [confirmandoEdicao, setConfirmandoEdicao] = useState(false);
   const saindoAposSalvar = useRef(false);
-  const onChange = useCallback((q: GeoJSON.MultiPolygon | null) => setQuadras(q), []);
+  const onChange = useCallback((q: Quadras | null) => setQuadras(q), []);
 
   const alterado = estadoDe(numero, nome, quadras) !== salvo;
   const bloqueio = useBlocker(
@@ -110,23 +115,23 @@ export function Cadastro() {
 
   useEffect(() => {
     if (id) {
-      listTerritorios()
-        .then((todos) => {
+      Promise.all([listTerritorios(), listMarcas()])
+        .then(([todos, marcas]) => {
           const t = todos.find((x) => x.id === id);
           if (!t) {
             toast.error("Território não encontrado.");
             navigate("/");
             return;
           }
-          const limites: GeoJSON.MultiPolygon | null = t.limites
-            ? { type: "MultiPolygon", coordinates: quadrasDe(t.limites) }
-            : null;
+          const desenho = featureCollectionDe(t.limites);
+          const limites = limitesDe(desenho.features);
           setNumero(t.numero);
           setNome(t.nome ?? "");
           setQuadras(limites);
           setSalvo(estadoDe(t.numero, t.nome ?? "", limites));
-          setDesenhoInicial(featureCollectionDe(t.limites));
+          setDesenhoInicial(desenho);
           setEnquadramento(boundsDeTerritorios([t]) ?? undefined);
+          setMarcadas(progressoDe(t, marcas).feitas);
           setMapaPronto(true);
         })
         .catch(() => {
@@ -187,7 +192,7 @@ export function Cadastro() {
     }
   }
 
-  const total = quadras?.coordinates.length ?? 0;
+  const total = quadras?.features.length ?? 0;
   const rotuloQuadras =
     total === 0
       ? "Desenhe as quadras do território no mapa"
@@ -258,7 +263,7 @@ export function Cadastro() {
 
           <Button
             className="w-full"
-            onClick={salvar}
+            onClick={() => (marcadas > 0 ? setConfirmandoEdicao(true) : salvar())}
             disabled={!numero || !quadras || salvando}
           >
             {salvando
@@ -293,6 +298,31 @@ export function Cadastro() {
               onClick={() => bloqueio.proceed?.()}
             >
               Sair sem salvar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmandoEdicao} onOpenChange={setConfirmandoEdicao}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Salvar mesmo com a rodada em andamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este território tem {marcadas}{" "}
+              {marcadas === 1 ? "quadra marcada" : "quadras marcadas"} nesta rodada. Se
+              você apagar uma quadra marcada, ela deixa de contar; se acrescentar uma
+              nova, ela entra como a fazer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmandoEdicao(false);
+                salvar();
+              }}
+            >
+              Salvar alterações
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

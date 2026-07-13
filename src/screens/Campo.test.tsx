@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from "vitest";
 import { Campo } from "./Campo";
 
 const bounds = vi.fn();
+const estados = vi.fn();
 
 vi.mock("../map/BaseMap", () => ({
   BaseMap: (props: { bounds?: unknown; children?: React.ReactNode }) => {
@@ -12,7 +13,23 @@ vi.mock("../map/BaseMap", () => ({
   },
 }));
 vi.mock("../map/TerritorioPolygon", () => ({
-  TerritorioPolygon: () => <div data-testid="poly" />,
+  TerritorioPolygon: (props: { estados?: unknown }) => {
+    estados(props.estados);
+    return <div data-testid="poly" />;
+  },
+}));
+vi.mock("../lib/quadras", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/quadras")>()),
+  listMarcas: vi.fn().mockResolvedValue([
+    {
+      saida_id: "s1",
+      territorio_id: "t1",
+      quadra_id: "quadra-a",
+      data: "2026-07-12",
+      local: null,
+      publicador_id: null,
+    },
+  ]),
 }));
 vi.mock("../lib/territorios", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../lib/territorios")>()),
@@ -22,29 +39,44 @@ vi.mock("../lib/territorios", async (importOriginal) => ({
       numero: "12",
       nome: "Centro",
       limites: {
-        type: "MultiPolygon",
-        coordinates: [
-          [
-            [
-              [-46, -23],
-              [-45, -23],
-              [-45, -22],
-              [-46, -22],
-              [-46, -23],
-            ],
-          ],
-          [
-            [
-              [-44, -21],
-              [-43, -21],
-              [-43, -20],
-              [-44, -20],
-              [-44, -21],
-            ],
-          ],
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: { id: "quadra-a" },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [-46, -23],
+                  [-45, -23],
+                  [-45, -22],
+                  [-46, -22],
+                  [-46, -23],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { id: "quadra-b" },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [-44, -21],
+                  [-43, -21],
+                  [-43, -20],
+                  [-44, -20],
+                  [-44, -21],
+                ],
+              ],
+            },
+          },
         ],
       },
       ativo: true,
+      progresso_desde: null,
       created_at: "",
     },
   ]),
@@ -75,5 +107,17 @@ describe("Campo", () => {
       [-46, -23],
       [-43, -20],
     ]);
+  });
+
+  it("pinta as quadras já feitas na rodada e deixa as outras como faltantes", async () => {
+    render(
+      <MemoryRouter initialEntries={["/campo/t1"]}>
+        <Routes>
+          <Route path="/campo/:id" element={<Campo />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId("poly")).toBeInTheDocument());
+    expect(estados).toHaveBeenLastCalledWith({ "quadra-a": "feita" });
   });
 });
