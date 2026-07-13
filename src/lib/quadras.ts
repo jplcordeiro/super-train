@@ -37,21 +37,23 @@ export function progressoDe(t: Territorio, marcas: Marca[]): Progresso {
   return { feitas, total, concluido: total > 0 && feitas === total };
 }
 
-interface MarcaRow {
-  saida_id: string;
-  territorio_id: string;
-  quadra_id: string;
-  saida: { data: string } | null;
-}
+type MarcaRow = Omit<Marca, "data">;
 
 export async function listMarcas(): Promise<Marca[]> {
-  const { data, error } = await supabase
-    .from("quadra_feita")
-    .select("saida_id, territorio_id, quadra_id, saida(data)");
-  if (error) throw error;
-  return (data as unknown as MarcaRow[])
-    .filter((m) => m.saida)
-    .map(({ saida, ...m }) => ({ ...m, data: saida!.data }));
+  const [marcadas, saidas] = await Promise.all([
+    supabase.from("quadra_feita").select("saida_id, territorio_id, quadra_id"),
+    supabase.from("saida").select("id, data"),
+  ]);
+  if (marcadas.error) throw marcadas.error;
+  if (saidas.error) throw saidas.error;
+
+  const dataDaSaida = new Map(
+    (saidas.data as { id: string; data: string }[]).map((s) => [s.id, s.data]),
+  );
+  return (marcadas.data as MarcaRow[]).flatMap((m) => {
+    const data = dataDaSaida.get(m.saida_id);
+    return data ? [{ ...m, data }] : [];
+  });
 }
 
 export async function marcarQuadra(

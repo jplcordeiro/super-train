@@ -126,8 +126,13 @@ export function progressoDe(t: Territorio, marcas: Marca[]): {
 ```
 
 Conta os `quadra_id` **distintos** com marca em saídas cuja `data >= progresso_desde`,
-descartando ids que não existem mais no desenho. `Marca` carrega a `data` da saída,
-trazida no `select` por join (`saida(data)`).
+descartando ids que não existem mais no desenho.
+
+`Marca` carrega a `data` da saída, mas ela **não vem por embed do PostgREST**:
+`quadra_feita` tem FK para `saida_territorio` (composta), não para `saida`, então
+`select(...saida(data))` falha com `PGRST200`. `listMarcas()` faz duas consultas
+(`quadra_feita` e `saida`) e casa as datas em memória — as tabelas de uma
+congregação são minúsculas, e o resultado independe das sutilezas de embed.
 
 **Progresso não é status.** O `statusTerritorio()` continua devolvendo
 `disponivel | designado | inativo`: um território pode estar 8/8 **e** designado ao

@@ -1,7 +1,24 @@
-import { describe, it, expect } from "vitest";
-import { marcasDaRodada, quadrasFeitasDe, progressoDe } from "./quadras";
+import { describe, it, expect, vi } from "vitest";
+import { listMarcas, marcasDaRodada, quadrasFeitasDe, progressoDe } from "./quadras";
 import type { Marca } from "./quadras";
 import type { Territorio } from "./types";
+
+const linhas: Record<string, unknown[]> = {
+  quadra_feita: [],
+  saida: [],
+};
+const selects: string[] = [];
+
+vi.mock("./supabase", () => ({
+  supabase: {
+    from: (tabela: string) => ({
+      select: (colunas: string) => {
+        selects.push(`${tabela}: ${colunas}`);
+        return Promise.resolve({ data: linhas[tabela], error: null });
+      },
+    }),
+  },
+}));
 
 function quadrado(lng: number, lat: number): GeoJSON.Polygon {
   return {
@@ -41,6 +58,42 @@ const marca = (quadra_id: string, data: string, saida_id = "s1"): Marca => ({
   territorio_id: "t1",
   quadra_id,
   data,
+});
+
+describe("listMarcas", () => {
+  it("não pede embed de saida: quadra_feita só tem FK para saida_territorio", async () => {
+    linhas.quadra_feita = [];
+    linhas.saida = [];
+    selects.length = 0;
+
+    await listMarcas();
+
+    const pedido = selects.find((s) => s.startsWith("quadra_feita:")) ?? "";
+    expect(pedido).not.toMatch(/saida\s*\(/);
+  });
+
+  it("traz a data de cada marca a partir da saída dela", async () => {
+    linhas.quadra_feita = [
+      { saida_id: "s1", territorio_id: "t1", quadra_id: "qa" },
+      { saida_id: "s2", territorio_id: "t1", quadra_id: "qb" },
+    ];
+    linhas.saida = [
+      { id: "s1", data: "2026-07-12" },
+      { id: "s2", data: "2026-07-15" },
+    ];
+
+    expect(await listMarcas()).toEqual([
+      { saida_id: "s1", territorio_id: "t1", quadra_id: "qa", data: "2026-07-12" },
+      { saida_id: "s2", territorio_id: "t1", quadra_id: "qb", data: "2026-07-15" },
+    ]);
+  });
+
+  it("descarta a marca cuja saída sumiu, em vez de inventar uma data", async () => {
+    linhas.quadra_feita = [{ saida_id: "sumiu", territorio_id: "t1", quadra_id: "qa" }];
+    linhas.saida = [{ id: "s1", data: "2026-07-12" }];
+
+    expect(await listMarcas()).toEqual([]);
+  });
 });
 
 describe("marcasDaRodada", () => {
