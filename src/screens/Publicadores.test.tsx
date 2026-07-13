@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi } from "vitest";
 import { saidasPorDirigente, Publicadores } from "./Publicadores";
@@ -93,6 +93,37 @@ describe("Publicadores", () => {
     expect(screen.getByText("manhã")).toBeInTheDocument();
     expect(screen.getByText("6")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
+  });
+
+  it("filtra a lista pelo nome buscado, ignorando acento e caixa", async () => {
+    render(
+      <MemoryRouter>
+        <Publicadores />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText("Kleber Souza")).toBeInTheDocument());
+
+    fireEvent.change(screen.getByPlaceholderText("Buscar por nome"), {
+      target: { value: "klÉber" },
+    });
+
+    expect(screen.getByText("Kleber Souza")).toBeInTheDocument();
+    expect(screen.queryByText("Ana Ribeiro")).not.toBeInTheDocument();
+  });
+
+  it("diz quando a busca não encontra ninguém", async () => {
+    render(
+      <MemoryRouter>
+        <Publicadores />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText("Kleber Souza")).toBeInTheDocument());
+
+    fireEvent.change(screen.getByPlaceholderText("Buscar por nome"), {
+      target: { value: "zzz" },
+    });
+
+    expect(screen.getByText(/Nenhum publicador com esse nome/)).toBeInTheDocument();
   });
 
   it("diz quando o publicador não dirige nada no mês", async () => {

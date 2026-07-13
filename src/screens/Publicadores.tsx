@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { listPublicadores, criarPublicador, excluirPublicador } from "../lib/publicadores";
 import { listTerritorios } from "../lib/territorios";
 import { listSaidas, iso, diaDaSemana, DIA_SEMANA, MES_NOME } from "../lib/saidas";
@@ -42,6 +42,13 @@ function formatTelefone(tel: string) {
   return tel;
 }
 
+function semAcento(texto: string) {
+  return texto
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
 function diaCurto(data: string) {
   const [, mes, dia] = data.split("-");
   return `${DIA_SEMANA[diaDaSemana(data)]}, ${dia}/${mes}`;
@@ -53,6 +60,7 @@ export function Publicadores() {
   const [saidas, setSaidas] = useState<Saida[]>([]);
   const [novoNome, setNovoNome] = useState("");
   const [novoTel, setNovoTel] = useState("");
+  const [busca, setBusca] = useState("");
   const [carregando, setCarregando] = useState(true);
 
   const hoje = new Date();
@@ -77,6 +85,11 @@ export function Publicadores() {
     () => new Map(territorios.map((t) => [t.id, t.numero])),
     [territorios],
   );
+  const encontrados = useMemo(() => {
+    const alvo = semAcento(busca.trim());
+    if (!alvo) return publicadores;
+    return publicadores.filter((p) => semAcento(p.nome).includes(alvo));
+  }, [publicadores, busca]);
 
   async function adicionar() {
     if (!novoNome) return;
@@ -132,6 +145,23 @@ export function Publicadores() {
         </Button>
       </div>
 
+      {!carregando && publicadores.length > 0 && (
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-faint"
+            aria-hidden="true"
+          />
+          <Input
+            className="pl-9"
+            type="search"
+            placeholder="Buscar por nome"
+            aria-label="Buscar publicador por nome"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+        </div>
+      )}
+
       {carregando ? (
         <ul role="status" aria-label="Carregando publicadores" className="grid gap-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -148,9 +178,13 @@ export function Publicadores() {
         <p className="py-1 text-[0.88rem] text-ink-soft">
           Nenhum publicador cadastrado. Comece adicionando o primeiro.
         </p>
+      ) : encontrados.length === 0 ? (
+        <p className="py-1 text-[0.88rem] text-ink-soft">
+          Nenhum publicador com esse nome.
+        </p>
       ) : (
         <ul className="grid gap-3">
-          {publicadores.map((p) => {
+          {encontrados.map((p) => {
             const dele = grupos.get(p.id) ?? [];
             return (
               <li
