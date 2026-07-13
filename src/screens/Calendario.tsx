@@ -230,7 +230,7 @@ export function Calendario() {
   }
 
   return (
-    <div className="folha mx-auto grid max-w-300 gap-[clamp(16px,3vw,26px)] px-[clamp(12px,3vw,32px)] pt-[clamp(16px,4vw,36px)] pb-24">
+    <div className="folha mx-auto grid max-w-300 gap-[clamp(16px,3vw,26px)] px-[clamp(12px,3vw,32px)] pt-[clamp(16px,4vw,36px)] pb-6">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-4">
         <div className="nao-imprime flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => window.print()}>
@@ -467,17 +467,19 @@ export function Calendario() {
         </>
       )}
 
-      <Button
-        size="lg"
-        className="nao-imprime fixed bottom-5 left-1/2 z-20 -translate-x-1/2 shadow-card sm:hidden"
-        onClick={() => {
-          setDiaAberto(hoje);
-          setEditando("nova");
-        }}
-      >
-        <Plus aria-hidden="true" />
-        Adicionar saída
-      </Button>
+      <div className="nao-imprime pointer-events-none sticky bottom-4 z-20 flex justify-center sm:hidden">
+        <Button
+          size="lg"
+          className="pointer-events-auto shadow-card"
+          onClick={() => {
+            setDiaAberto(hoje);
+            setEditando("nova");
+          }}
+        >
+          <Plus aria-hidden="true" />
+          Adicionar saída
+        </Button>
+      </div>
 
       <Sheet open={diaAberto !== null} onOpenChange={(v) => !v && fecharDia()}>
         <SheetContent
