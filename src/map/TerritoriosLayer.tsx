@@ -1,34 +1,17 @@
 import { useEffect } from "react";
 import { Source, Layer, useMap } from "react-map-gl/mapbox";
 import type { Territorio } from "../lib/types";
-import { geometriaDe, type StatusTerritorio } from "../lib/territorios";
+import { geometriaDe } from "../lib/territorios";
 
-const CORES: Record<StatusTerritorio, { fill: string; line: string }> = {
-  disponivel: { fill: "#5c8a76", line: "#3f6b58" },
-  designado: { fill: "#486492", line: "#33507d" },
-  inativo: { fill: "#98a1ae", line: "#67707d" },
-};
-
-const corPorStatus = (chave: "fill" | "line"): mapboxgl.ExpressionSpecification => [
-  "match",
-  ["get", "status"],
-  "disponivel",
-  CORES.disponivel[chave],
-  "designado",
-  CORES.designado[chave],
-  "inativo",
-  CORES.inativo[chave],
-  CORES.disponivel[chave],
-];
+const COR_FILL = "#486492";
+const COR_LINE = "#33507d";
 
 const FILL_ID = "territorios-fill";
 export function TerritoriosLayer({
   territorios,
-  statusDe,
   onSelect,
 }: {
   territorios: Territorio[];
-  statusDe: (t: Territorio) => StatusTerritorio;
   onSelect: (id: string) => void;
 }) {
   const { current: map } = useMap();
@@ -41,7 +24,7 @@ export function TerritoriosLayer({
       .map(({ t, geometry }) => ({
         type: "Feature",
         geometry,
-        properties: { id: t.id, numero: t.numero, status: statusDe(t) },
+        properties: { id: t.id, numero: t.numero },
       })),
   };
 
@@ -68,7 +51,7 @@ export function TerritoriosLayer({
       <Layer
         id={FILL_ID}
         type="fill"
-        paint={{ "fill-color": corPorStatus("fill"), "fill-opacity": 0.18 }}
+        paint={{ "fill-color": COR_FILL, "fill-opacity": 0.18 }}
       />
       <Layer
         id="territorios-casing"
@@ -80,7 +63,7 @@ export function TerritoriosLayer({
         id="territorios-line"
         type="line"
         layout={{ "line-join": "round" }}
-        paint={{ "line-color": corPorStatus("line"), "line-width": 2.5 }}
+        paint={{ "line-color": COR_LINE, "line-width": 2.5 }}
       />
       <Layer
         id="territorios-label"
