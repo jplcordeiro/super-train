@@ -239,6 +239,7 @@ describe("MarcarQuadras", () => {
     await renderTela();
     expect(props.estados?.qc).toBe("andamento");
 
+    fireEvent.click(screen.getByRole("button", { name: /paramos aqui/i }));
     await act(async () => props.onParadaClick?.("qc"));
 
     expect(limparParada).toHaveBeenCalledWith("t1", "qc");

@@ -216,7 +216,7 @@ export function MarcarQuadras() {
           estados={estados}
           paradas={pinos}
           onQuadraClick={aoTocarQuadra}
-          onParadaClick={removerPino}
+          onParadaClick={modo === "parada" ? removerPino : undefined}
           historicoDe={(quadraId) =>
             historicoDaQuadra(territorio.id, quadraId, marcas, publicadores)
           }
@@ -247,6 +247,7 @@ export function MarcarQuadras() {
             <button
               type="button"
               onClick={() => setModo("feita")}
+              aria-pressed={modo === "feita"}
               className={cn(
                 botaoModo,
                 modo === "feita"
@@ -259,6 +260,7 @@ export function MarcarQuadras() {
             <button
               type="button"
               onClick={() => setModo("parada")}
+              aria-pressed={modo === "parada"}
               className={cn(
                 botaoModo,
                 modo === "parada" ? "bg-white text-ocre shadow-card" : "text-ink-soft",
