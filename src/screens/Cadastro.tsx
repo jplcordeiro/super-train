@@ -7,6 +7,8 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { BaseMap } from "../map/BaseMap";
 import type { ViewState, Bounds } from "../map/BaseMap";
+import { TerritoriosReferencia } from "../map/TerritoriosReferencia";
+import type { Territorio } from "../lib/types";
 import {
   criarTerritorio,
   atualizarTerritorio,
@@ -101,6 +103,7 @@ export function Cadastro() {
   const [mapaPronto, setMapaPronto] = useState(false);
   const [salvo, setSalvo] = useState(VAZIO);
   const [marcadas, setMarcadas] = useState(0);
+  const [referencia, setReferencia] = useState<Territorio[]>([]);
   const [confirmandoEdicao, setConfirmandoEdicao] = useState(false);
   const saindoAposSalvar = useRef(false);
   const onChange = useCallback((q: Quadras | null) => setQuadras(q), []);
@@ -140,6 +143,10 @@ export function Cadastro() {
         });
       return;
     }
+
+    listTerritorios()
+      .then(setReferencia)
+      .catch(() => setReferencia([]));
 
     if (!navigator.geolocation) {
       setMapaPronto(true);
@@ -209,6 +216,7 @@ export function Cadastro() {
             initialViewState={inicial}
             bounds={enquadramento}
           >
+            {!id && <TerritoriosReferencia territorios={referencia} />}
             <DrawControl desenhoInicial={desenhoInicial} onChange={onChange} />
           </BaseMap>
         </div>

@@ -95,6 +95,12 @@ describe("Cadastro", () => {
     expect(screen.getByText(/desenhe as quadras/i)).toBeInTheDocument();
   });
 
+  it("no modo de criação, busca os territórios para referência", async () => {
+    const { listTerritorios } = await import("../lib/territorios");
+    renderCadastro();
+    await waitFor(() => expect(listTerritorios).toHaveBeenCalled());
+  });
+
   it("no modo edição, carrega o território e salva com atualizarTerritorio", async () => {
     const { atualizarTerritorio } = await import("../lib/territorios");
     await renderEdicao();
