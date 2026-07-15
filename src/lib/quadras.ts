@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { quadrasDe } from "./territorios";
+import { mesmoMes, type Mes } from "./saidas";
 import type { Publicador, Territorio } from "./types";
 
 export interface Marca {
@@ -96,6 +97,65 @@ export function progressoDe(
   const feitas = quadrasFeitasDe(t, marcas).size;
   const emAndamento = paradaAtualDe(t, marcas, paradas).size;
   return { feitas, total, emAndamento, concluido: total > 0 && feitas === total };
+}
+
+export interface LinhaRelatorio {
+  territorio: Territorio;
+  feitasNoMes: number;
+  total: number;
+  concluidoNoMes: boolean;
+}
+
+export interface RelatorioMes {
+  linhas: LinhaRelatorio[];
+  totalQuadrasNoMes: number;
+  totalConcluidos: number;
+}
+
+export function relatorioDoMes(
+  m: Mes,
+  territorios: Territorio[],
+  marcas: Marca[],
+): RelatorioMes {
+  const linhas: LinhaRelatorio[] = [];
+  for (const t of territorios) {
+    const existentes = new Set(quadrasDe(t.limites).map((q) => q.id));
+    const total = existentes.size;
+
+    const feitasNoMes = new Set(
+      marcas
+        .filter(
+          (mk) =>
+            mk.territorio_id === t.id &&
+            existentes.has(mk.quadra_id) &&
+            mesmoMes(mk.data, m),
+        )
+        .map((mk) => mk.quadra_id),
+    ).size;
+
+    const daRodada = marcasDaRodada(t, marcas).filter((mk) =>
+      existentes.has(mk.quadra_id),
+    );
+    const feitasRodada = quadrasFeitasDe(t, marcas).size;
+    const ultimaData = daRodada.reduce<string | null>(
+      (max, mk) => (max === null || mk.data > max ? mk.data : max),
+      null,
+    );
+    const concluidoNoMes =
+      total > 0 &&
+      feitasRodada === total &&
+      ultimaData !== null &&
+      mesmoMes(ultimaData, m);
+
+    if (feitasNoMes > 0 || concluidoNoMes) {
+      linhas.push({ territorio: t, feitasNoMes, total, concluidoNoMes });
+    }
+  }
+  return {
+    linhas,
+    totalQuadrasNoMes: linhas.reduce((soma, l) => soma + l.feitasNoMes, 0),
+    totalConcluidos: linhas.filter((l) => l.concluidoNoMes).length,
+  };
 }
 
 type MarcaRow = Omit<Marca, "data" | "local" | "publicador_id">;
