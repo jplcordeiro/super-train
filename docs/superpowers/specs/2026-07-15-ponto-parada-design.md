@@ -136,11 +136,11 @@ Funções:
 ## Mapa (`src/map/TerritorioPolygon.tsx`)
 
 - `EstadoQuadra` ganha `"andamento"`. Nova cor no `CORES`:
-  `{ fill: "#c0894a", opacidade: 0.30 }` (ocre/âmbar dessaturado, coerente com
-  a paleta jw; lê como "atenção, incompleto"). O `match` de `porEstado` inclui
-  o novo estado.
-- Novo token no `src/index.css` `@theme` (ex. `--color-ambar: #c0894a`) para
-  reuso fora do mapa (selo, badge da Gestão).
+  `{ fill: "#8a6636", opacidade: 0.30 }` — **reusa o token `--color-ocre`**
+  (`#8a6636`) que já existe na paleta jw (par de `sage`, usado por `feita`); lê
+  como "atenção, incompleto". O `match` de `porEstado` inclui o novo estado.
+- Fora do mapa reusam-se os utilitários Tailwind já existentes `ocre` /
+  `ocre-wash` (selo, badge da Gestão). Nenhum token novo é criado.
 - Nova prop opcional `paradas?: { quadraId: string; lng: number; lat: number }[]`
   → renderiza um `Marker` (pino) por ponto, na cor âmbar. No modo de edição, o
   `Marker` recebe `onClick` para **remover** o pino (tocar no pino o apaga).
