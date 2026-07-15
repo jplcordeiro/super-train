@@ -4,9 +4,12 @@ import { listTerritorios, excluirTerritorio } from "../lib/territorios";
 import {
   iniciarNovaRodada,
   listMarcas,
+  listParadas,
+  paradaAtualDe,
   progressoDe,
   quadrasFeitasDe,
   type Marca,
+  type Parada,
 } from "../lib/quadras";
 import { listPublicadores } from "../lib/publicadores";
 import { designacoesAbertas, devolver } from "../lib/designacoes";
@@ -37,20 +40,23 @@ export function Gestao() {
   const [publicadores, setPublicadores] = useState<Publicador[]>([]);
   const [abertas, setAbertas] = useState<Designacao[]>([]);
   const [marcas, setMarcas] = useState<Marca[]>([]);
+  const [paradas, setParadas] = useState<Parada[]>([]);
   const [ofertaRodada, setOfertaRodada] = useState<Territorio | null>(null);
   const [carregando, setCarregando] = useState(true);
 
   async function carregar() {
-    const [t, p, d, m] = await Promise.all([
+    const [t, p, d, m, pp] = await Promise.all([
       listTerritorios(),
       listPublicadores(),
       designacoesAbertas(),
       listMarcas(),
+      listParadas(),
     ]);
     setTerritorios(t);
     setPublicadores(p);
     setAbertas(d);
     setMarcas(m);
+    setParadas(pp);
   }
   useEffect(() => {
     carregar().finally(() => setCarregando(false));
@@ -127,7 +133,8 @@ export function Gestao() {
           <ul className="grid grid-cols-1 gap-3 min-[620px]:grid-cols-2">
             {territorios.map((t) => {
               const d = abertaDe(t.id);
-              const progresso = progressoDe(t, marcas);
+              const progresso = progressoDe(t, marcas, paradas);
+              const emAndamento = paradaAtualDe(t, marcas, paradas);
               return (
                 <li
                   key={t.id}
@@ -143,6 +150,7 @@ export function Gestao() {
                     <TerritorioGlyph
                       limites={t.limites}
                       feitas={quadrasFeitasDe(t, marcas)}
+                      andamento={new Set(emAndamento.keys())}
                     />
                   </Link>
 
@@ -179,6 +187,12 @@ export function Gestao() {
                       ) : (
                         <span className="text-[0.76rem] tabular-nums text-ink-soft">
                           {progresso.feitas}/{progresso.total} quadras
+                          {progresso.emAndamento > 0 && (
+                            <span className="text-ocre">
+                              {" · "}
+                              {progresso.emAndamento} em andamento
+                            </span>
+                          )}
                         </span>
                       ))}
                   </div>

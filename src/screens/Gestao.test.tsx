@@ -2,7 +2,7 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Gestao } from "./Gestao";
-import type { Marca } from "../lib/quadras";
+import type { Marca, Parada } from "../lib/quadras";
 import type { Territorio } from "../lib/types";
 
 const { quadra } = vi.hoisted(() => ({
@@ -59,6 +59,7 @@ vi.mock("../lib/quadras", async (orig) => {
   return {
     ...actual,
     listMarcas: vi.fn().mockResolvedValue([]),
+    listParadas: vi.fn().mockResolvedValue([]),
     iniciarNovaRodada: vi.fn().mockResolvedValue(undefined),
   };
 });
@@ -72,11 +73,27 @@ const marca = (quadra_id: string): Marca => ({
   publicador_id: null,
 });
 
-async function montar(marcas: Marca[] = [], t: Territorio = territorio) {
+const parada = (quadra_id: string): Parada => ({
+  territorio_id: "t1",
+  quadra_id,
+  saida_id: "s1",
+  lng: -46,
+  lat: -23,
+  data: "2026-07-12",
+  local: null,
+  publicador_id: null,
+});
+
+async function montar(
+  marcas: Marca[] = [],
+  t: Territorio = territorio,
+  paradas: Parada[] = [],
+) {
   const { listTerritorios } = await import("../lib/territorios");
-  const { listMarcas } = await import("../lib/quadras");
+  const { listMarcas, listParadas } = await import("../lib/quadras");
   vi.mocked(listTerritorios).mockResolvedValue([t]);
   vi.mocked(listMarcas).mockResolvedValue(marcas);
+  vi.mocked(listParadas).mockResolvedValue(paradas);
   render(
     <MemoryRouter>
       <Gestao />
@@ -148,6 +165,11 @@ describe("Gestao", () => {
       expect(screen.queryByText(/começar nova rodada\?/i)).not.toBeInTheDocument(),
     );
     expect(iniciarNovaRodada).not.toHaveBeenCalled();
+  });
+
+  it("mostra quantas quadras estão em andamento além das feitas", async () => {
+    await montar([marca("qa")], territorio, [parada("qb")]);
+    expect(await screen.findByText(/1 em andamento/i)).toBeInTheDocument();
   });
 
   it("depois de zerada, a rodada volta a zero sem perder as marcas antigas", async () => {

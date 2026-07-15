@@ -5,9 +5,11 @@ import { cn } from "@/lib/utils";
 export function TerritorioGlyph({
   limites,
   feitas,
+  andamento,
 }: {
   limites: Limites | null;
   feitas?: Set<string>;
+  andamento?: Set<string>;
 }) {
   const quadras = quadrasDe(limites)
     .map((q) => ({ id: q.id, anel: q.coordinates[0] }))
@@ -67,7 +69,11 @@ export function TerritorioGlyph({
           d={caminho(q.anel)}
           className={cn(
             "stroke-current",
-            feitas?.has(q.id) ? "fill-sage/60" : "fill-jwblue/12",
+            feitas?.has(q.id)
+              ? "fill-sage/60"
+              : andamento?.has(q.id)
+                ? "fill-ocre/60"
+                : "fill-jwblue/12",
           )}
           strokeWidth="4"
           strokeLinejoin="round"
