@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MarcarQuadras } from "./MarcarQuadras";
@@ -6,7 +6,9 @@ import type { EstadoQuadra } from "../map/TerritorioPolygon";
 
 const props: {
   estados?: Record<string, EstadoQuadra>;
-  onQuadraClick?: (id: string) => void;
+  paradas?: { quadraId: string; lng: number; lat: number }[];
+  onQuadraClick?: (id: string, lngLat: { lng: number; lat: number }) => void;
+  onParadaClick?: (id: string) => void;
 } = {};
 
 vi.mock("../map/BaseMap", () => ({
@@ -17,10 +19,14 @@ vi.mock("../map/BaseMap", () => ({
 vi.mock("../map/TerritorioPolygon", () => ({
   TerritorioPolygon: (p: {
     estados?: Record<string, EstadoQuadra>;
-    onQuadraClick?: (id: string) => void;
+    paradas?: { quadraId: string; lng: number; lat: number }[];
+    onQuadraClick?: (id: string, lngLat: { lng: number; lat: number }) => void;
+    onParadaClick?: (id: string) => void;
   }) => {
     props.estados = p.estados;
+    props.paradas = p.paradas;
     props.onQuadraClick = p.onQuadraClick;
+    props.onParadaClick = p.onParadaClick;
     return <div data-testid="poly" />;
   },
 }));
@@ -77,8 +83,15 @@ vi.mock("../lib/saidas", async (importOriginal) => ({
 vi.mock("../lib/quadras", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../lib/quadras")>()),
   listMarcas: vi.fn(),
+  listParadas: vi.fn(),
   marcarQuadra: vi.fn().mockResolvedValue(undefined),
   desmarcarQuadra: vi.fn().mockResolvedValue(undefined),
+  pararEm: vi.fn().mockResolvedValue(undefined),
+  limparParada: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../lib/publicadores", () => ({
+  listPublicadores: vi.fn().mockResolvedValue([]),
 }));
 
 const toastInfo = vi.fn();
@@ -106,9 +119,13 @@ async function renderTela() {
 
 describe("MarcarQuadras", () => {
   beforeEach(async () => {
-    const { listMarcas, marcarQuadra, desmarcarQuadra } = await import("../lib/quadras");
+    const { listMarcas, listParadas, marcarQuadra, desmarcarQuadra, pararEm, limparParada } =
+      await import("../lib/quadras");
     vi.mocked(marcarQuadra).mockClear();
     vi.mocked(desmarcarQuadra).mockClear();
+    vi.mocked(pararEm).mockClear();
+    vi.mocked(limparParada).mockClear();
+    vi.mocked(listParadas).mockResolvedValue([]);
     vi.mocked(listMarcas).mockResolvedValue([
       {
         saida_id: "s1",
@@ -145,7 +162,7 @@ describe("MarcarQuadras", () => {
     const { marcarQuadra } = await import("../lib/quadras");
     await renderTela();
 
-    await act(async () => props.onQuadraClick?.("qc"));
+    await act(async () => props.onQuadraClick?.("qc", { lng: -42, lat: -22 }));
 
     expect(marcarQuadra).toHaveBeenCalledWith("s1", "t1", "qc");
     await waitFor(() => expect(props.estados?.qc).toBe("feita"));
@@ -155,7 +172,7 @@ describe("MarcarQuadras", () => {
     const { desmarcarQuadra } = await import("../lib/quadras");
     await renderTela();
 
-    await act(async () => props.onQuadraClick?.("qa"));
+    await act(async () => props.onQuadraClick?.("qa", { lng: -46, lat: -22 }));
 
     expect(desmarcarQuadra).toHaveBeenCalledWith("s1", "t1", "qa");
     await waitFor(() => expect(props.estados?.qa).toBeUndefined());
@@ -165,7 +182,7 @@ describe("MarcarQuadras", () => {
     const { marcarQuadra, desmarcarQuadra } = await import("../lib/quadras");
     await renderTela();
 
-    await act(async () => props.onQuadraClick?.("qb"));
+    await act(async () => props.onQuadraClick?.("qb", { lng: -44, lat: -22 }));
 
     expect(marcarQuadra).not.toHaveBeenCalled();
     expect(desmarcarQuadra).not.toHaveBeenCalled();
@@ -178,5 +195,76 @@ describe("MarcarQuadras", () => {
   it("conta as quadras feitas na rodada", async () => {
     await renderTela();
     expect(screen.getByText(/2 de 3 quadras/i)).toBeInTheDocument();
+  });
+
+  it("no modo paramos, tocar numa quadra grava o ponto onde tocou", async () => {
+    const { pararEm } = await import("../lib/quadras");
+    await renderTela();
+
+    fireEvent.click(screen.getByRole("button", { name: /paramos aqui/i }));
+    await act(async () =>
+      props.onQuadraClick?.("qc", { lng: -45.5, lat: -22.5 }),
+    );
+
+    expect(pararEm).toHaveBeenCalledWith("s1", "t1", "qc", -45.5, -22.5);
+    await waitFor(() => expect(props.estados?.qc).toBe("andamento"));
+  });
+
+  it("no modo paramos, largar pino numa quadra feita tira a marca e vira andamento", async () => {
+    const { pararEm, desmarcarQuadra } = await import("../lib/quadras");
+    await renderTela();
+
+    fireEvent.click(screen.getByRole("button", { name: /paramos aqui/i }));
+    await act(async () => props.onQuadraClick?.("qa", { lng: -46, lat: -23 }));
+
+    expect(pararEm).toHaveBeenCalledWith("s1", "t1", "qa", -46, -23);
+    expect(desmarcarQuadra).toHaveBeenCalledWith("s1", "t1", "qa");
+    await waitFor(() => expect(props.estados?.qa).toBe("andamento"));
+  });
+
+  it("tocar no pino remove o ponto de parada", async () => {
+    const { listParadas, limparParada } = await import("../lib/quadras");
+    vi.mocked(listParadas).mockResolvedValue([
+      {
+        territorio_id: "t1",
+        quadra_id: "qc",
+        saida_id: "s1",
+        lng: -45.5,
+        lat: -22.5,
+        data: "2026-07-12",
+        local: null,
+        publicador_id: null,
+      },
+    ]);
+    await renderTela();
+    expect(props.estados?.qc).toBe("andamento");
+
+    await act(async () => props.onParadaClick?.("qc"));
+
+    expect(limparParada).toHaveBeenCalledWith("t1", "qc");
+    await waitFor(() => expect(props.estados?.qc).toBeUndefined());
+  });
+
+  it("no modo feita, marcar uma quadra que tinha pino limpa o pino", async () => {
+    const { listParadas, marcarQuadra, limparParada } = await import("../lib/quadras");
+    vi.mocked(listParadas).mockResolvedValue([
+      {
+        territorio_id: "t1",
+        quadra_id: "qc",
+        saida_id: "s1",
+        lng: -45.5,
+        lat: -22.5,
+        data: "2026-07-12",
+        local: null,
+        publicador_id: null,
+      },
+    ]);
+    await renderTela();
+
+    await act(async () => props.onQuadraClick?.("qc", { lng: -45.5, lat: -22.5 }));
+
+    expect(marcarQuadra).toHaveBeenCalledWith("s1", "t1", "qc");
+    expect(limparParada).toHaveBeenCalledWith("t1", "qc");
+    await waitFor(() => expect(props.estados?.qc).toBe("feita"));
   });
 });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { BaseMap } from "../map/BaseMap";
 import { TerritorioPolygon, type EstadoQuadra } from "../map/TerritorioPolygon";
@@ -8,23 +8,33 @@ import { boundsDeTerritorios, listTerritorios, quadrasDe } from "../lib/territor
 import {
   desmarcarQuadra,
   historicoDaQuadra,
+  limparParada,
   listMarcas,
+  listParadas,
   marcarQuadra,
   marcasDaRodada,
+  paradaAtualDe,
+  pararEm,
   type Marca,
+  type Parada,
 } from "../lib/quadras";
 import { listPublicadores } from "../lib/publicadores";
 import { buscarSaida, dataBR, diaDaSemana, DIA_SEMANA } from "../lib/saidas";
 import type { Publicador, Saida, Territorio } from "../lib/types";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { RadarLoader } from "../components/RadarLoader";
+
+type Modo = "feita" | "parada";
 
 export function MarcarQuadras() {
   const { saidaId, territorioId } = useParams();
   const [saida, setSaida] = useState<Saida | null>(null);
   const [territorio, setTerritorio] = useState<Territorio | null>(null);
   const [marcas, setMarcas] = useState<Marca[]>([]);
+  const [paradas, setParadas] = useState<Parada[]>([]);
   const [publicadores, setPublicadores] = useState<Publicador[]>([]);
+  const [modo, setModo] = useState<Modo>("feita");
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
@@ -34,12 +44,14 @@ export function MarcarQuadras() {
       buscarSaida(saidaId),
       listTerritorios(),
       listMarcas(),
+      listParadas(),
       listPublicadores(),
     ])
-      .then(([s, todos, marcadas, pubs]) => {
+      .then(([s, todos, marcadas, paradasList, pubs]) => {
         setSaida(s);
         setTerritorio(todos.find((t) => t.id === territorioId) ?? null);
         setMarcas(marcadas);
+        setParadas(paradasList);
         setPublicadores(pubs);
       })
       .catch(() => toast.error("Não foi possível abrir a saída. Tente novamente."))
@@ -72,56 +84,129 @@ export function MarcarQuadras() {
   const deOutroDia = new Map(
     daRodada.filter((m) => m.saida_id !== saida.id).map((m) => [m.quadra_id, m]),
   );
+  const paradaAtual = paradaAtualDe(territorio, marcas, paradas);
 
   const quadras = quadrasDe(territorio.limites);
   const estados: Record<string, EstadoQuadra> = {};
   for (const q of quadras) {
     if (desteDia.has(q.id)) estados[q.id] = "feita";
     else if (deOutroDia.has(q.id)) estados[q.id] = "outra";
+    else if (paradaAtual.has(q.id)) estados[q.id] = "andamento";
   }
   const feitas = desteDia.size + deOutroDia.size;
+  const pinos = [...paradaAtual.values()].map((p) => ({
+    quadraId: p.quadra_id,
+    lng: p.lng,
+    lat: p.lat,
+  }));
 
-  async function alternar(quadraId: string) {
+  const semParada = (lista: Parada[], quadraId: string) =>
+    lista.filter(
+      (p) => !(p.territorio_id === territorio.id && p.quadra_id === quadraId),
+    );
+  const semMarca = (lista: Marca[], quadraId: string) =>
+    lista.filter(
+      (m) =>
+        !(
+          m.saida_id === saida.id &&
+          m.territorio_id === territorio.id &&
+          m.quadra_id === quadraId
+        ),
+    );
+
+  async function marcarFeita(quadraId: string) {
     if (!saida || !territorio) return;
+    const marcada = desteDia.has(quadraId);
+    const tinhaPino = paradaAtual.has(quadraId);
+    const antesM = marcas;
+    const antesP = paradas;
+    setMarcas(
+      marcada
+        ? semMarca(marcas, quadraId)
+        : [
+            ...marcas,
+            {
+              saida_id: saida.id,
+              territorio_id: territorio.id,
+              quadra_id: quadraId,
+              data: saida.data,
+              local: saida.local,
+              publicador_id: saida.publicador_id,
+            },
+          ],
+    );
+    if (!marcada && tinhaPino) setParadas(semParada(paradas, quadraId));
+    try {
+      if (marcada) await desmarcarQuadra(saida.id, territorio.id, quadraId);
+      else {
+        await marcarQuadra(saida.id, territorio.id, quadraId);
+        if (tinhaPino) await limparParada(territorio.id, quadraId);
+      }
+    } catch {
+      setMarcas(antesM);
+      setParadas(antesP);
+      toast.error("Não foi possível salvar a quadra. Tente novamente.");
+    }
+  }
+
+  async function marcarParada(
+    quadraId: string,
+    lngLat: { lng: number; lat: number },
+  ) {
+    if (!saida || !territorio) return;
+    const eraFeita = desteDia.has(quadraId);
+    const antesM = marcas;
+    const antesP = paradas;
+    const nova: Parada = {
+      saida_id: saida.id,
+      territorio_id: territorio.id,
+      quadra_id: quadraId,
+      lng: lngLat.lng,
+      lat: lngLat.lat,
+      data: saida.data,
+      local: saida.local,
+      publicador_id: saida.publicador_id,
+    };
+    setParadas([...semParada(paradas, quadraId), nova]);
+    if (eraFeita) setMarcas(semMarca(marcas, quadraId));
+    try {
+      await pararEm(saida.id, territorio.id, quadraId, lngLat.lng, lngLat.lat);
+      if (eraFeita) await desmarcarQuadra(saida.id, territorio.id, quadraId);
+    } catch {
+      setMarcas(antesM);
+      setParadas(antesP);
+      toast.error("Não foi possível salvar o ponto de parada. Tente novamente.");
+    }
+  }
+
+  async function aoTocarQuadra(
+    quadraId: string,
+    lngLat: { lng: number; lat: number },
+  ) {
     const jaFeitaEmOutra = deOutroDia.get(quadraId);
     if (jaFeitaEmOutra) {
       toast.info(`Esta quadra já foi feita na saída de ${dataBR(jaFeitaEmOutra.data)}.`);
       return;
     }
+    if (modo === "feita") await marcarFeita(quadraId);
+    else await marcarParada(quadraId, lngLat);
+  }
 
-    const marcada = desteDia.has(quadraId);
-    const anteriores = marcas;
-    const nova: Marca = {
-      saida_id: saida.id,
-      territorio_id: territorio.id,
-      quadra_id: quadraId,
-      data: saida.data,
-      local: saida.local,
-      publicador_id: saida.publicador_id,
-    };
-    setMarcas(
-      marcada
-        ? marcas.filter(
-            (m) =>
-              !(
-                m.saida_id === saida.id &&
-                m.territorio_id === territorio.id &&
-                m.quadra_id === quadraId
-              ),
-          )
-        : [...marcas, nova],
-    );
-
+  async function removerPino(quadraId: string) {
+    if (!territorio) return;
+    const antes = paradas;
+    setParadas(semParada(paradas, quadraId));
     try {
-      if (marcada) await desmarcarQuadra(saida.id, territorio.id, quadraId);
-      else await marcarQuadra(saida.id, territorio.id, quadraId);
+      await limparParada(territorio.id, quadraId);
     } catch {
-      setMarcas(anteriores);
-      toast.error("Não foi possível salvar a quadra. Tente novamente.");
+      setParadas(antes);
+      toast.error("Não foi possível remover o ponto. Tente novamente.");
     }
   }
 
   const nomeDia = DIA_SEMANA[diaDaSemana(saida.data)];
+  const botaoModo =
+    "inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[0.82rem] font-medium transition-colors";
 
   return (
     <div className="relative h-dvh w-full overflow-hidden">
@@ -129,7 +214,9 @@ export function MarcarQuadras() {
         <TerritorioPolygon
           limites={territorio.limites}
           estados={estados}
-          onQuadraClick={alternar}
+          paradas={pinos}
+          onQuadraClick={aoTocarQuadra}
+          onParadaClick={removerPino}
           historicoDe={(quadraId) =>
             historicoDaQuadra(territorio.id, quadraId, marcas, publicadores)
           }
@@ -137,22 +224,48 @@ export function MarcarQuadras() {
       </BaseMap>
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 p-3">
-        <div className="pointer-events-auto mx-auto flex max-w-130 items-center gap-2.5 rounded-xl border border-line bg-white/95 px-3 py-2.5 shadow-card backdrop-blur">
-          <Link
-            to="/calendario"
-            aria-label="Voltar ao calendário"
-            className="grid size-9 flex-none place-items-center rounded-lg text-ink-soft transition-colors hover:bg-mist hover:text-jwblue"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-          </Link>
-          <div className="grid min-w-0 gap-0.5">
-            <span className="text-[0.72rem] font-semibold uppercase tracking-[0.1em] text-ink-soft">
-              Marcando {nomeDia}, {dataBR(saida.data)}
-            </span>
-            <span className="truncate text-[0.95rem] font-semibold text-jwblue-deep">
-              Território Nº {territorio.numero}
-              {territorio.nome ? ` · ${territorio.nome}` : ""}
-            </span>
+        <div className="pointer-events-auto mx-auto grid max-w-130 gap-2.5 rounded-xl border border-line bg-white/95 px-3 py-2.5 shadow-card backdrop-blur">
+          <div className="flex items-center gap-2.5">
+            <Link
+              to="/calendario"
+              aria-label="Voltar ao calendário"
+              className="grid size-9 flex-none place-items-center rounded-lg text-ink-soft transition-colors hover:bg-mist hover:text-jwblue"
+            >
+              <ArrowLeft className="size-4" aria-hidden="true" />
+            </Link>
+            <div className="grid min-w-0 gap-0.5">
+              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.1em] text-ink-soft">
+                Marcando {nomeDia}, {dataBR(saida.data)}
+              </span>
+              <span className="truncate text-[0.95rem] font-semibold text-jwblue-deep">
+                Território Nº {territorio.numero}
+                {territorio.nome ? ` · ${territorio.nome}` : ""}
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-1 rounded-lg bg-mist p-1">
+            <button
+              type="button"
+              onClick={() => setModo("feita")}
+              className={cn(
+                botaoModo,
+                modo === "feita"
+                  ? "bg-white text-jwblue-deep shadow-card"
+                  : "text-ink-soft",
+              )}
+            >
+              <Check className="size-3.5" aria-hidden="true" /> Feita
+            </button>
+            <button
+              type="button"
+              onClick={() => setModo("parada")}
+              className={cn(
+                botaoModo,
+                modo === "parada" ? "bg-white text-ocre shadow-card" : "text-ink-soft",
+              )}
+            >
+              <MapPin className="size-3.5" aria-hidden="true" /> Paramos aqui
+            </button>
           </div>
         </div>
       </div>
@@ -163,7 +276,9 @@ export function MarcarQuadras() {
             {feitas} de {quadras.length} quadras feitas nesta rodada
           </span>
           <span className="text-[0.8rem] text-ink-soft">
-            Toque numa quadra para marcar o que foi feito neste dia.
+            {modo === "feita"
+              ? "Toque numa quadra para marcar o que foi feito neste dia."
+              : "Toque no mapa onde o grupo parou. Toque no pino para remover."}
           </span>
         </div>
       </div>
