@@ -5,6 +5,7 @@ import { Campo } from "./Campo";
 
 const bounds = vi.fn();
 const estados = vi.fn();
+const paradasProp = vi.fn();
 
 vi.mock("../map/BaseMap", () => ({
   BaseMap: (props: { bounds?: unknown; children?: React.ReactNode }) => {
@@ -13,8 +14,9 @@ vi.mock("../map/BaseMap", () => ({
   },
 }));
 vi.mock("../map/TerritorioPolygon", () => ({
-  TerritorioPolygon: (props: { estados?: unknown }) => {
+  TerritorioPolygon: (props: { estados?: unknown; paradas?: unknown }) => {
     estados(props.estados);
+    paradasProp(props.paradas);
     return <div data-testid="poly" />;
   },
 }));
@@ -30,6 +32,10 @@ vi.mock("../lib/quadras", async (importOriginal) => ({
       publicador_id: null,
     },
   ]),
+  listParadas: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("../lib/publicadores", () => ({
+  listPublicadores: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("../lib/territorios", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../lib/territorios")>()),
@@ -119,5 +125,36 @@ describe("Campo", () => {
     );
     await waitFor(() => expect(screen.getByTestId("poly")).toBeInTheDocument());
     expect(estados).toHaveBeenLastCalledWith({ "quadra-a": "feita" });
+  });
+
+  it("pinta as quadras em andamento e passa os pinos ao mapa", async () => {
+    const { listParadas } = await import("../lib/quadras");
+    vi.mocked(listParadas).mockResolvedValueOnce([
+      {
+        territorio_id: "t1",
+        quadra_id: "quadra-b",
+        saida_id: "s1",
+        lng: -43.5,
+        lat: -20.5,
+        data: "2026-07-12",
+        local: null,
+        publicador_id: null,
+      },
+    ]);
+    render(
+      <MemoryRouter initialEntries={["/campo/t1"]}>
+        <Routes>
+          <Route path="/campo/:id" element={<Campo />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId("poly")).toBeInTheDocument());
+    expect(estados).toHaveBeenLastCalledWith({
+      "quadra-a": "feita",
+      "quadra-b": "andamento",
+    });
+    expect(paradasProp).toHaveBeenLastCalledWith([
+      { quadraId: "quadra-b", lng: -43.5, lat: -20.5 },
+    ]);
   });
 });

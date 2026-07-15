@@ -4,8 +4,14 @@ import { ArrowLeft } from "lucide-react";
 import { BaseMap } from "../map/BaseMap";
 import { TerritorioPolygon, type EstadoQuadra } from "../map/TerritorioPolygon";
 import { listTerritorios, boundsDeTerritorios } from "../lib/territorios";
-import { historicoDaQuadra, listMarcas, quadrasFeitasDe } from "../lib/quadras";
-import type { Marca } from "../lib/quadras";
+import {
+  historicoDaQuadra,
+  listMarcas,
+  listParadas,
+  paradaAtualDe,
+  quadrasFeitasDe,
+} from "../lib/quadras";
+import type { Marca, Parada } from "../lib/quadras";
 import { listPublicadores } from "../lib/publicadores";
 import type { Publicador, Territorio } from "../lib/types";
 import { Button } from "@/components/ui/button";
@@ -15,15 +21,17 @@ export function Campo() {
   const { id } = useParams();
   const [t, setT] = useState<Territorio | null>(null);
   const [marcas, setMarcas] = useState<Marca[]>([]);
+  const [paradas, setParadas] = useState<Parada[]>([]);
   const [publicadores, setPublicadores] = useState<Publicador[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     setCarregando(true);
-    Promise.all([listTerritorios(), listMarcas(), listPublicadores()])
-      .then(([todos, marcadas, pubs]) => {
+    Promise.all([listTerritorios(), listMarcas(), listParadas(), listPublicadores()])
+      .then(([todos, marcadas, paradasList, pubs]) => {
         setT(todos.find((x) => x.id === id) ?? null);
         setMarcas(marcadas);
+        setParadas(paradasList);
         setPublicadores(pubs);
       })
       .finally(() => setCarregando(false));
@@ -64,8 +72,15 @@ export function Campo() {
     );
 
   const bounds = boundsDeTerritorios([t]);
+  const paradaAtual = paradaAtualDe(t, marcas, paradas);
   const estados: Record<string, EstadoQuadra> = {};
   for (const quadraId of quadrasFeitasDe(t, marcas)) estados[quadraId] = "feita";
+  for (const quadraId of paradaAtual.keys()) estados[quadraId] = "andamento";
+  const pinos = [...paradaAtual.values()].map((p) => ({
+    quadraId: p.quadra_id,
+    lng: p.lng,
+    lat: p.lat,
+  }));
 
   return (
     <div className="relative h-dvh w-full overflow-hidden">
@@ -74,6 +89,7 @@ export function Campo() {
           <TerritorioPolygon
             limites={t.limites}
             estados={estados}
+            paradas={pinos}
             historicoDe={(quadraId) =>
               historicoDaQuadra(t.id, quadraId, marcas, publicadores)
             }
