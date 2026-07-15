@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { Source, Layer, Popup, useMap } from "react-map-gl/mapbox";
+import { Source, Layer, Popup, Marker, useMap } from "react-map-gl/mapbox";
+import { MapPin } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { featureCollectionDe } from "../lib/territorios";
 import { HistoricoQuadra } from "./HistoricoQuadra";
 import type { PassagemQuadra } from "../lib/quadras";
 import type { Limites } from "../lib/types";
 
-export type EstadoQuadra = "feita" | "outra" | "falta";
+export type EstadoQuadra = "feita" | "outra" | "falta" | "andamento";
 
 const CORES: Record<EstadoQuadra, { fill: string; opacidade: number }> = {
   feita: { fill: "#5c8a76", opacidade: 0.42 },
   outra: { fill: "#5c8a76", opacidade: 0.16 },
+  andamento: { fill: "#8a6636", opacidade: 0.3 },
   falta: { fill: "#486492", opacidade: 0.12 },
 };
 
@@ -22,6 +25,8 @@ const porEstado = (
   CORES.feita[chave],
   "outra",
   CORES.outra[chave],
+  "andamento",
+  CORES.andamento[chave],
   CORES.falta[chave],
 ];
 
@@ -38,12 +43,16 @@ interface Aberto {
 export function TerritorioPolygon({
   limites,
   estados,
+  paradas,
   onQuadraClick,
+  onParadaClick,
   historicoDe,
 }: {
   limites: Limites;
   estados?: Record<string, EstadoQuadra>;
-  onQuadraClick?: (quadraId: string) => void;
+  paradas?: { quadraId: string; lng: number; lat: number }[];
+  onQuadraClick?: (quadraId: string, lngLat: { lng: number; lat: number }) => void;
+  onParadaClick?: (quadraId: string) => void;
   historicoDe?: (quadraId: string) => PassagemQuadra[];
 }) {
   const { current: map } = useMap();
@@ -82,7 +91,8 @@ export function TerritorioPolygon({
       }
       setAberto(null);
       const id = quadraDe(e);
-      if (id && onQuadraClick) onQuadraClick(id);
+      if (id && onQuadraClick)
+        onQuadraClick(id, { lng: e.lngLat.lng, lat: e.lngLat.lat });
     };
 
     const mover = (e: mapboxgl.MapLayerMouseEvent) => {
@@ -150,6 +160,32 @@ export function TerritorioPolygon({
         layout={{ "line-join": "round" }}
         paint={{ "line-color": "#33507d", "line-width": 3 }}
       />
+
+      {paradas?.map((p) => (
+        <Marker
+          key={p.quadraId}
+          longitude={p.lng}
+          latitude={p.lat}
+          anchor="bottom"
+          onClick={
+            onParadaClick
+              ? (e) => {
+                  e.originalEvent.stopPropagation();
+                  onParadaClick(p.quadraId);
+                }
+              : undefined
+          }
+        >
+          <div
+            className={cn(
+              "grid size-6 place-items-center rounded-full border-2 border-white bg-ocre text-white shadow-card",
+              onParadaClick && "cursor-pointer",
+            )}
+          >
+            <MapPin className="size-3.5" aria-hidden="true" />
+          </div>
+        </Marker>
+      ))}
 
       {aberto && historicoDe && (
         <Popup
