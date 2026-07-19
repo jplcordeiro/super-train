@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 import { quadrasDe } from "./territorios";
 import { mesmoMes, type Mes } from "./saidas";
-import { comRodada, type EmRodada } from "./rodadas";
+import { comRodada, rodadasDe, type EmRodada } from "./rodadas";
 import type { Publicador, Rodada, Territorio } from "./types";
 
 export interface Marca {
@@ -105,6 +105,37 @@ export interface LinhaRelatorio {
   concluidoNoMes: boolean;
 }
 
+export function fechamentosDe(
+  t: Territorio,
+  marcas: Marca[],
+  rodadas: Rodada[],
+): string[] {
+  const existentes = new Set(quadrasDe(t.limites).map((q) => q.id));
+  const total = existentes.size;
+  if (total === 0) return [];
+
+  const doTerritorio = marcas
+    .filter((m) => m.territorio_id === t.id && existentes.has(m.quadra_id))
+    .sort((a, b) => a.data.localeCompare(b.data));
+
+  const cortes = rodadasDe(t.id, rodadas).map((r) => r.inicio);
+  const fechamentos: string[] = [];
+  for (const [k, inicio] of [null, ...cortes].entries()) {
+    const fim = cortes[k] ?? null;
+    const vistas = new Set<string>();
+    for (const m of doTerritorio) {
+      if (inicio && m.data < inicio) continue;
+      if (fim && m.data >= fim) continue;
+      vistas.add(m.quadra_id);
+      if (vistas.size === total) {
+        fechamentos.push(m.data);
+        break;
+      }
+    }
+  }
+  return fechamentos;
+}
+
 export interface RelatorioMes {
   linhas: LinhaRelatorio[];
   totalQuadrasNoMes: number;
@@ -133,20 +164,9 @@ export function relatorioDoMes(
         .map((mk) => mk.quadra_id),
     ).size;
 
-    const emRodada = comRodada(t, rodadas);
-    const daRodada = marcasDaRodada(emRodada, marcas).filter((mk) =>
-      existentes.has(mk.quadra_id),
+    const concluidoNoMes = fechamentosDe(t, marcas, rodadas).some((d) =>
+      mesmoMes(d, m),
     );
-    const feitasRodada = quadrasFeitasDe(emRodada, marcas).size;
-    const ultimaData = daRodada.reduce<string | null>(
-      (max, mk) => (max === null || mk.data > max ? mk.data : max),
-      null,
-    );
-    const concluidoNoMes =
-      total > 0 &&
-      feitasRodada === total &&
-      ultimaData !== null &&
-      mesmoMes(ultimaData, m);
 
     if (feitasNoMes > 0 || concluidoNoMes) {
       linhas.push({

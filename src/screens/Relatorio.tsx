@@ -7,8 +7,8 @@ import {
   relatorioDoMes,
   type Marca,
 } from "../lib/quadras";
-import { MES_NOME, mesVizinho, type Mes } from "../lib/saidas";
-import { listRodadas } from "../lib/rodadas";
+import { dataBR, MES_NOME, mesVizinho, type Mes } from "../lib/saidas";
+import { campanhas, listRodadas } from "../lib/rodadas";
 import type { Rodada } from "../lib/types";
 import type { Territorio } from "../lib/types";
 import { TerritorioGlyph } from "./TerritorioGlyph";
@@ -35,6 +35,7 @@ export function Relatorio() {
   }, []);
 
   const relatorio = relatorioDoMes(mes, territorios, marcas, rodadas);
+  const periodos = campanhas(rodadas);
 
   return (
     <div className="folha mx-auto grid max-w-220 gap-[clamp(16px,3vw,26px)] px-[clamp(14px,4vw,32px)] pt-[clamp(16px,4vw,40px)] pb-16">
@@ -155,6 +156,31 @@ export function Relatorio() {
             ))}
           </ul>
 
+          {periodos.length > 0 && (
+            <section className="nao-imprime grid gap-2.5 border-t border-line pt-5">
+              <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-ink-soft">
+                Rodadas
+              </h2>
+              <ul className="grid gap-1.5">
+                {periodos.map((p) => (
+                  <li
+                    key={`${p.inicio}-${p.nome ?? ""}`}
+                    className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-lg border border-line bg-white px-3.5 py-2.5"
+                  >
+                    <span className="text-[0.9rem] font-medium text-ink">
+                      {p.nome ?? "Rodada"}
+                    </span>
+                    <span className="text-[0.8rem] tabular-nums text-ink-soft">
+                      desde {dataBR(p.inicio)} ·{" "}
+                      {p.territorio_ids.length === 1
+                        ? "1 território"
+                        : `${p.territorio_ids.length} territórios`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </>
       )}
     </div>

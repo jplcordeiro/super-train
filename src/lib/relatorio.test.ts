@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { relatorioDoMes, type Marca } from "./quadras";
-import type { Territorio } from "./types";
+import { fechamentosDe, relatorioDoMes, type Marca } from "./quadras";
+import type { Rodada, Territorio } from "./types";
 
 function quadrado(lng: number, lat: number, lado = 1): GeoJSON.Polygon {
   return {
@@ -114,5 +114,50 @@ describe("relatorioDoMes", () => {
       marca("t7", "qa", "2026-07-09"),
     ]);
     expect(r.linhas.map((l) => l.territorio.numero)).toEqual(["5", "7"]);
+  });
+});
+
+describe("o relatório não se reescreve quando uma rodada nova começa", () => {
+  const rodada = (inicio: string, nome: string | null = null): Rodada => ({
+    id: `r-${inicio}`,
+    territorio_id: "t12",
+    inicio,
+    nome,
+    created_at: "",
+  });
+
+  const fechouEm12 = [
+    marca("t12", "qA", "2026-07-10"),
+    marca("t12", "qB", "2026-07-12"),
+  ];
+
+  it("julho conta o concluído antes da campanha", () => {
+    const t = territorio("12", "qA", "qB");
+    expect(relatorioDoMes(julho, [t], fechouEm12).totalConcluidos).toBe(1);
+  });
+
+  it("julho continua contando o concluído depois da campanha de 18/07", () => {
+    const t = territorio("12", "qA", "qB");
+    const r = relatorioDoMes(julho, [t], fechouEm12, [
+      rodada("2026-07-18", "Convites do congresso"),
+    ]);
+    expect(r.totalConcluidos).toBe(1);
+    expect(r.linhas[0]).toMatchObject({ feitasNoMes: 2, concluidoNoMes: true });
+  });
+
+  it("a rodada nova pode fechar de novo no mesmo mês", () => {
+    const t = territorio("12", "qA", "qB");
+    const marcas = [
+      ...fechouEm12,
+      marca("t12", "qA", "2026-07-20"),
+      marca("t12", "qB", "2026-07-22"),
+    ];
+    expect(fechamentosDe(t, marcas, [rodada("2026-07-18")])).toEqual([
+      "2026-07-12",
+      "2026-07-22",
+    ]);
+    expect(
+      relatorioDoMes(julho, [t], marcas, [rodada("2026-07-18")]).linhas[0],
+    ).toMatchObject({ concluidoNoMes: true });
   });
 });
