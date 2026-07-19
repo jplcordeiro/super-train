@@ -30,6 +30,23 @@ export function inicioDaRodada(
   return minhas.length > 0 ? minhas[minhas.length - 1].inicio : null;
 }
 
+export function rodadaEm(
+  territorio_id: string,
+  data: string,
+  rodadas: Rodada[],
+): { inicio: string | null; fim: string | null } {
+  let inicio: string | null = null;
+  let fim: string | null = null;
+  for (const r of rodadasDe(territorio_id, rodadas)) {
+    if (r.inicio <= data) inicio = r.inicio;
+    else {
+      fim = r.inicio;
+      break;
+    }
+  }
+  return { inicio, fim };
+}
+
 export function comRodada(t: Territorio, rodadas: Rodada[]): EmRodada {
   return { ...t, inicio: inicioDaRodada(t.id, rodadas) };
 }

@@ -12,13 +12,12 @@ import {
   listMarcas,
   listParadas,
   marcarQuadra,
-  marcasDaRodada,
   paradaAtualDe,
   pararEm,
   type Marca,
   type Parada,
 } from "../lib/quadras";
-import { comRodada, comecarRodada, listRodadas } from "../lib/rodadas";
+import { comecarRodada, listRodadas, rodadaEm } from "../lib/rodadas";
 import { listPublicadores } from "../lib/publicadores";
 import { buscarSaida, dataBR, diaDaSemana, DIA_SEMANA } from "../lib/saidas";
 import type { Publicador, Rodada, Saida, Territorio } from "../lib/types";
@@ -92,13 +91,24 @@ export function MarcarQuadras() {
     );
   }
 
-  const emRodada = comRodada(territorio, rodadas);
-  const daRodada = marcasDaRodada(emRodada, marcas);
+  const janela = rodadaEm(territorio.id, saida.data, rodadas);
+  const emRodada = { ...territorio, inicio: janela.inicio };
+  const naJanela = (data: string) =>
+    (!janela.inicio || data >= janela.inicio) && (!janela.fim || data < janela.fim);
   const desteDia = new Map(
-    daRodada.filter((m) => m.saida_id === saida.id).map((m) => [m.quadra_id, m]),
+    marcas
+      .filter((m) => m.territorio_id === territorio.id && m.saida_id === saida.id)
+      .map((m) => [m.quadra_id, m]),
   );
   const deOutroDia = new Map(
-    daRodada.filter((m) => m.saida_id !== saida.id).map((m) => [m.quadra_id, m]),
+    marcas
+      .filter(
+        (m) =>
+          m.territorio_id === territorio.id &&
+          m.saida_id !== saida.id &&
+          naJanela(m.data),
+      )
+      .map((m) => [m.quadra_id, m]),
   );
   const paradaAtual = paradaAtualDe(emRodada, marcas, paradas);
 

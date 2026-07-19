@@ -277,4 +277,26 @@ describe("MarcarQuadras", () => {
     expect(limparParada).toHaveBeenCalledWith("t1", "qc");
     await waitFor(() => expect(props.estados?.qc).toBe("feita"));
   });
+
+  it("saída anterior ao início da rodada: a quadra já marcada continua marcada", async () => {
+    const { listRodadas } = await import("../lib/rodadas");
+    const { marcarQuadra, desmarcarQuadra } = await import("../lib/quadras");
+    vi.mocked(listRodadas).mockResolvedValue([
+      {
+        id: "r1",
+        territorio_id: "t1",
+        inicio: "2026-07-13",
+        nome: "Convites do congresso",
+        created_at: "",
+      },
+    ]);
+    await renderTela();
+
+    expect(props.estados?.qa).toBe("feita");
+
+    await act(async () => props.onQuadraClick?.("qa", { lng: -46, lat: -22 }));
+
+    expect(marcarQuadra).not.toHaveBeenCalled();
+    expect(desmarcarQuadra).toHaveBeenCalledWith("s1", "t1", "qa");
+  });
 });
