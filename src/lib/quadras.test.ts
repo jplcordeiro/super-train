@@ -411,4 +411,25 @@ describe("passagensDoMes", () => {
   it("devolve lista vazia quando o mês não teve passagem", () => {
     expect(passagensDoMes(territorio(["qa"]), julho, [])).toEqual([]);
   });
+
+  it("conta a quadra em cada saída que a marcou, mesmo repetida no mês", () => {
+    const marcas = [marca("qa", "2026-07-05", "s1"), marca("qa", "2026-07-19", "s2")];
+
+    expect(passagensDoMes(territorio(["qa"]), julho, marcas)).toEqual([
+      { saida_id: "s1", data: "2026-07-05", local: null, quadras: 1 },
+      { saida_id: "s2", data: "2026-07-19", local: null, quadras: 1 },
+    ]);
+  });
+
+  it("desempata saídas na mesma data pelo saida_id, para não depender da ordem do banco", () => {
+    const marcas = [
+      marca("qa", "2026-07-12", "s2"),
+      marca("qb", "2026-07-12", "s1"),
+    ];
+
+    expect(passagensDoMes(territorio(["qa", "qb"]), julho, marcas)).toEqual([
+      { saida_id: "s1", data: "2026-07-12", local: null, quadras: 1 },
+      { saida_id: "s2", data: "2026-07-12", local: null, quadras: 1 },
+    ]);
+  });
 });

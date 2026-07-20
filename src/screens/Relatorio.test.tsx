@@ -42,14 +42,16 @@ vi.mock("../lib/quadras", async (orig) => {
 });
 vi.mock("../lib/rodadas", async (orig) => {
   const actual = await (orig() as Promise<Record<string, unknown>>);
-  return { ...actual, listRodadas: vi.fn().mockResolvedValue([]) };
+  return { ...actual, listRodadas: vi.fn() };
 });
 
 async function montar(marcas: Marca[], t: Territorio = territorio) {
   const { listTerritorios } = await import("../lib/territorios");
   const { listMarcas } = await import("../lib/quadras");
+  const { listRodadas } = await import("../lib/rodadas");
   vi.mocked(listTerritorios).mockResolvedValue([t]);
   vi.mocked(listMarcas).mockResolvedValue(marcas);
+  vi.mocked(listRodadas).mockResolvedValue([]);
   render(<Relatorio />);
   await waitFor(() =>
     expect(screen.queryByRole("status")).not.toBeInTheDocument(),

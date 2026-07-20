@@ -139,7 +139,7 @@ export function passagensDoMes(
 
   return [...porSaida.values()]
     .map(({ vistas: _vistas, ...passagem }) => passagem)
-    .sort((a, b) => a.data.localeCompare(b.data));
+    .sort((a, b) => a.data.localeCompare(b.data) || a.saida_id.localeCompare(b.saida_id));
 }
 
 export function fechamentosDe(
