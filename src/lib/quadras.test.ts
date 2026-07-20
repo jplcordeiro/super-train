@@ -8,6 +8,7 @@ import {
   paradaAtualDe,
   quadrasFeitasDe,
   progressoDe,
+  passagensDoMes,
 } from "./quadras";
 import type { Marca, Parada } from "./quadras";
 import type { EmRodada } from "./rodadas";
@@ -351,5 +352,63 @@ describe("paradaAtualDe", () => {
     const t = territorio(["a"]);
     const atual = paradaAtualDe(t, [], [parada("sumiu", "2026-07-12")]);
     expect(atual.size).toBe(0);
+  });
+});
+
+describe("passagensDoMes", () => {
+  const julho = { ano: 2026, mes: 7 };
+
+  it("agrupa as marcas por saída, em ordem de data", () => {
+    const marcas: Marca[] = [
+      { ...marca("qb", "2026-07-19", "s3"), local: "Salão" },
+      { ...marca("qa", "2026-07-05", "s1"), local: "Salão" },
+      { ...marca("qc", "2026-07-12", "s2"), local: "Praça da Matriz" },
+    ];
+
+    expect(passagensDoMes(territorio(["qa", "qb", "qc"]), julho, marcas)).toEqual([
+      { saida_id: "s1", data: "2026-07-05", local: "Salão", quadras: 1 },
+      { saida_id: "s2", data: "2026-07-12", local: "Praça da Matriz", quadras: 1 },
+      { saida_id: "s3", data: "2026-07-19", local: "Salão", quadras: 1 },
+    ]);
+  });
+
+  it("conta quadras distintas dentro da mesma saída", () => {
+    const marcas = [
+      marca("qa", "2026-07-05"),
+      marca("qb", "2026-07-05"),
+      marca("qa", "2026-07-05"),
+    ];
+
+    expect(passagensDoMes(territorio(["qa", "qb"]), julho, marcas)).toEqual([
+      { saida_id: "s1", data: "2026-07-05", local: null, quadras: 2 },
+    ]);
+  });
+
+  it("ignora marcas de outro mês", () => {
+    const marcas = [marca("qa", "2026-06-28"), marca("qb", "2026-07-05", "s2")];
+
+    expect(passagensDoMes(territorio(["qa", "qb"]), julho, marcas)).toEqual([
+      { saida_id: "s2", data: "2026-07-05", local: null, quadras: 1 },
+    ]);
+  });
+
+  it("ignora marcas de outro território", () => {
+    const marcas: Marca[] = [
+      { ...marca("qa", "2026-07-05"), territorio_id: "outro" },
+    ];
+
+    expect(passagensDoMes(territorio(["qa"]), julho, marcas)).toEqual([]);
+  });
+
+  it("ignora marca cuja quadra sumiu do desenho", () => {
+    const marcas = [marca("qa", "2026-07-05"), marca("apagada", "2026-07-05")];
+
+    expect(passagensDoMes(territorio(["qa"]), julho, marcas)).toEqual([
+      { saida_id: "s1", data: "2026-07-05", local: null, quadras: 1 },
+    ]);
+  });
+
+  it("devolve lista vazia quando o mês não teve passagem", () => {
+    expect(passagensDoMes(territorio(["qa"]), julho, [])).toEqual([]);
   });
 });
