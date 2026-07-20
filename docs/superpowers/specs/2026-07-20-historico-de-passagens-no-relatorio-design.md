@@ -63,7 +63,7 @@ O `<summary>` é a linha atual — glifo, número, nome, `N de M quadras`, badge
 
 `<details>` nativo entrega teclado e leitor de tela sem estado em React nem componente de acordeão.
 
-Território cujo mês não tem passagens (aparece na lista só por `concluidoNoMes`, com o fechamento vindo de marca de outro mês) não ganha `<details>`: renderiza a linha simples de hoje, sem disclosure vazio.
+Todo card da lista tem pelo menos uma passagem, então não existe caso de disclosure vazio a tratar: `relatorioDoMes` só inclui um território se `feitasNoMes > 0 || concluidoNoMes`; o filtro de `feitasNoMes` é o mesmo de `passagensDoMes`, e um fechamento sempre data de uma marca. Se um dia essas regras divergirem, o card vazio aparece como um disclosure sem conteúdo — sinal de que o invariante quebrou.
 
 ### 3. Impressão
 
@@ -79,7 +79,7 @@ Em `src/lib/quadras.test.ts`, para `passagensDoMes`:
 - ignora marca cuja quadra não existe mais no desenho;
 - território sem marcas no mês devolve lista vazia.
 
-Em `src/screens/Relatorio.test.tsx` (arquivo novo — a tela ainda não tem teste): o card lista as passagens do mês e o território sem passagens não renderiza disclosure.
+Em `src/screens/Relatorio.test.tsx` (arquivo novo — a tela ainda não tem teste): o card lista as passagens do mês, com o local nulo escrito por extenso; "1 saída" no singular; e duas quadras da mesma saída somadas numa linha só.
 
 ## Fora de escopo
 
