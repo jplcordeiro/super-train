@@ -61,8 +61,17 @@ sem ganho.
   O `SUPABASE_ACCESS_TOKEN` **não** vai para o painel: é credencial de administrador,
   não tem função no build, e colocá-la lá é risco sem contrapartida.
 
-- **Mapbox → allowlist de URL do token:** incluir o domínio de produção. É o passo mais
-  fácil de esquecer, e o sintoma é mapa em branco — não uma mensagem de erro.
+- **Mapbox → restrição de URL do token:** este design partiu da premissa de que o token
+  já era restrito por URL e que bastaria acrescentar o domínio de produção. **A premissa
+  era falsa** — verificado após o deploy: o token responde a qualquer origem (um pedido
+  à API com `Referer` de um domínio inventado retorna 200).
+
+  Consequência prática: o mapa funciona em produção sem nenhuma ação. Em contrapartida,
+  o token vive no bundle público, e sem restrição qualquer pessoa que o extraia consome
+  a cota da conta. Configurar a restrição continua recomendado, mas virou tarefa
+  independente deste deploy, e a lista terá de incluir também os endereços de
+  desenvolvimento (`localhost:3000` e a LAN do `npm run all` em `:3001`), senão o mapa
+  para de renderizar localmente.
 
 - **Supabase:** nada a fazer. O login é e-mail e senha (`signInWithPassword`), sem magic
   link, portanto não há redirect URL a cadastrar. A URL ser pública não expõe dados: a
@@ -81,6 +90,16 @@ No celular, pelo 4G — não no Wi-Fi de casa, que mascara o teste:
 
 ## Risco conhecido e aceito
 
-URLs de preview (geradas a cada push em branch) não estarão na allowlist do Mapbox, e
-por isso o mapa aparecerá em branco nelas. É comportamento esperado, não defeito;
-produção é o que importa.
+Previa-se que URLs de preview (geradas a cada push em branch) mostrassem o mapa em
+branco, por nunca estarem na allowlist do Mapbox. **Esse risco não se concretizou**,
+pelo motivo descrito acima: o token não tem restrição de URL, então preview também
+renderiza o mapa. Se a restrição vier a ser configurada, o risco volta — e segue sendo
+aceitável, porque produção é o que importa.
+
+## Resultado
+
+Publicado em https://polygon-sandy.vercel.app e verificado em 2026-07-22:
+
+- Rotas profundas (`/campo/:id`, `/saida/:id/territorio/:id`) devolvem o `index.html` em
+  vez de 404, e os assets seguem sendo servidos — o rewrite não os atropela.
+- As três variáveis `VITE_*` estão no bundle publicado; o `SUPABASE_ACCESS_TOKEN` não.
