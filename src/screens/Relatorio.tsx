@@ -3,6 +3,7 @@ import { Printer, ChevronLeft, ChevronRight } from "lucide-react";
 import { listTerritorios } from "../lib/territorios";
 import {
   listMarcas,
+  passagensDoMes,
   quadrasFeitasDe,
   relatorioDoMes,
   type Marca,
@@ -122,38 +123,71 @@ export function Relatorio() {
           </dl>
 
           <ul className="grid gap-2.5">
-            {relatorio.linhas.map((l) => (
-              <li
-                key={l.territorio.id}
-                className="grid grid-cols-[auto_1fr_auto] items-center gap-3.5 rounded-xl border border-line bg-white px-4 py-3 shadow-card"
-              >
-                <div className="h-10 w-10 flex-none text-jwblue">
-                  <TerritorioGlyph
-                    limites={l.territorio.limites}
-                    feitas={quadrasFeitasDe(l.territorio, marcas)}
-                  />
-                </div>
-                <div className="grid min-w-0 gap-0.5">
-                  <span className="font-mono text-[1.1rem] font-medium tabular-nums text-ink">
-                    {l.territorio.numero}
-                  </span>
-                  <span className="truncate text-[0.9rem] text-ink-soft">
-                    {l.territorio.nome ?? "Sem nome"}
-                  </span>
-                </div>
-                <div className="grid justify-items-end gap-0.75 text-right">
-                  <span className="text-[0.8rem] tabular-nums text-ink-soft">
-                    <b className="font-medium text-ink">{l.feitasNoMes}</b>
-                    {l.total > 0 && ` de ${l.total}`} quadras
-                  </span>
-                  {l.concluidoNoMes && (
-                    <span className="rounded-full bg-sage-wash px-2 py-0.5 text-[0.72rem] font-medium text-sage-ink">
-                      Concluído
-                    </span>
-                  )}
-                </div>
-              </li>
-            ))}
+            {relatorio.linhas.map((l) => {
+              const passagens = passagensDoMes(l.territorio, mes, marcas);
+
+              return (
+                <li
+                  key={l.territorio.id}
+                  className="rounded-xl border border-line bg-white shadow-card"
+                >
+                  <details className="group">
+                    <summary className="grid cursor-pointer list-none grid-cols-[auto_1fr_auto] items-center gap-3.5 px-4 py-3 [&::-webkit-details-marker]:hidden">
+                      <div className="h-10 w-10 flex-none text-jwblue">
+                        <TerritorioGlyph
+                          limites={l.territorio.limites}
+                          feitas={quadrasFeitasDe(l.territorio, marcas)}
+                        />
+                      </div>
+                      <div className="grid min-w-0 gap-0.5">
+                        <span className="font-mono text-[1.1rem] font-medium tabular-nums text-ink">
+                          {l.territorio.numero}
+                        </span>
+                        <span className="truncate text-[0.9rem] text-ink-soft">
+                          {l.territorio.nome ?? "Sem nome"}
+                        </span>
+                        <span className="flex items-center gap-1 text-[0.78rem] text-ink-faint">
+                          <ChevronRight
+                            aria-hidden="true"
+                            className="size-3.5 transition-transform group-open:rotate-90"
+                          />
+                          {passagens.length === 1
+                            ? "1 saída neste mês"
+                            : `${passagens.length} saídas neste mês`}
+                        </span>
+                      </div>
+                      <div className="grid justify-items-end gap-0.75 text-right">
+                        <span className="text-[0.8rem] tabular-nums text-ink-soft">
+                          <b className="font-medium text-ink">{l.feitasNoMes}</b>
+                          {l.total > 0 && ` de ${l.total}`} quadras
+                        </span>
+                        {l.concluidoNoMes && (
+                          <span className="rounded-full bg-sage-wash px-2 py-0.5 text-[0.72rem] font-medium text-sage-ink">
+                            Concluído
+                          </span>
+                        )}
+                      </div>
+                    </summary>
+                    <ul className="grid gap-1 border-t border-line px-4 py-2.5">
+                      {passagens.map((p) => (
+                        <li
+                          key={p.saida_id}
+                          className="text-[0.82rem] leading-snug text-ink-soft"
+                        >
+                          <span className="font-medium tabular-nums text-ink">
+                            {dataBR(p.data)}
+                          </span>
+                          {" · "}
+                          {p.local ?? "Sem ponto de encontro"}
+                          {" · "}
+                          {p.quadras === 1 ? "1 quadra" : `${p.quadras} quadras`}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </li>
+              );
+            })}
           </ul>
 
           {periodos.length > 0 && (

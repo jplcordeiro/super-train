@@ -200,4 +200,7 @@
   .folha-agenda {
     display: none !important;
   }
+  .folha details::details-content {
+    content-visibility: visible !important;
+  }
 }

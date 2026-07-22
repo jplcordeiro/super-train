@@ -105,6 +105,43 @@ export interface LinhaRelatorio {
   concluidoNoMes: boolean;
 }
 
+export interface PassagemMes {
+  saida_id: string;
+  data: string;
+  local: string | null;
+  quadras: number;
+}
+
+export function passagensDoMes(
+  t: Territorio,
+  m: Mes,
+  marcas: Marca[],
+): PassagemMes[] {
+  const existentes = new Set(quadrasDe(t.limites).map((q) => q.id));
+  const porSaida = new Map<string, PassagemMes & { vistas: Set<string> }>();
+
+  for (const mk of marcas) {
+    if (mk.territorio_id !== t.id) continue;
+    if (!existentes.has(mk.quadra_id)) continue;
+    if (!mesmoMes(mk.data, m)) continue;
+
+    const atual = porSaida.get(mk.saida_id) ?? {
+      saida_id: mk.saida_id,
+      data: mk.data,
+      local: mk.local,
+      quadras: 0,
+      vistas: new Set<string>(),
+    };
+    atual.vistas.add(mk.quadra_id);
+    atual.quadras = atual.vistas.size;
+    porSaida.set(mk.saida_id, atual);
+  }
+
+  return [...porSaida.values()]
+    .map(({ vistas: _vistas, ...passagem }) => passagem)
+    .sort((a, b) => a.data.localeCompare(b.data) || a.saida_id.localeCompare(b.saida_id));
+}
+
 export function fechamentosDe(
   t: Territorio,
   marcas: Marca[],

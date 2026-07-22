@@ -278,10 +278,10 @@ describe("Relatorio", () => {
     ]);
 
     expect(screen.getByText("2 saídas neste mês")).toBeInTheDocument();
-    expect(screen.getByText(/05\/07\/2026/)).toHaveTextContent(
+    expect(screen.getByText("05/07/2026").closest("li")).toHaveTextContent(
       "05/07/2026 · Salão · 1 quadra",
     );
-    expect(screen.getByText(/12\/07\/2026/)).toHaveTextContent(
+    expect(screen.getByText("12/07/2026").closest("li")).toHaveTextContent(
       "12/07/2026 · Sem ponto de encontro · 1 quadra",
     );
   });
@@ -321,10 +321,14 @@ describe("Relatorio", () => {
       },
     ]);
 
-    expect(screen.getByText(/05\/07\/2026/)).toHaveTextContent("2 quadras");
+    expect(screen.getByText("05/07/2026").closest("li")).toHaveTextContent(
+      "2 quadras",
+    );
   });
 });
 ```
+
+O `.closest("li")` é necessário: `getByText` casa um elemento pelos seus nós de texto **diretos**, então buscar pela data resolve para o `<span>` interno, cujo `textContent` é só a data. Ancorar no `<li>` é o que faz a asserção provar a linha inteira — data, local e contagem juntos.
 
 Se `vi.setSystemTime` exigir fake timers no setup do projeto, trocar por `vi.useFakeTimers({ shouldAdvanceTime: true })` no `beforeEach` e `vi.useRealTimers()` num `afterEach`. O objetivo é apenas garantir que o mês inicial da tela seja julho/2026.
 
